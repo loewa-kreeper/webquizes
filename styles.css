@@ -442,13 +442,52 @@ button {
 }
 
 @media (max-width: 700px) {
+  .app {
+    padding: 8px;
+    width: 100%;
+  }
+
   .quiz-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
+  }
+
+  .stats {
+    width: 100%;
+    justify-content: space-between;
   }
 
   #guess-form {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .map-and-list {
+    flex-direction: column;
+  }
+
+  .map-wrap {
+    width: 100%;
+    aspect-ratio: 1.5;
+    /* Ensure map holds some shape on small screens */
+  }
+
+  .country-list {
+    flex: 1 1 auto;
+    width: 100%;
+    max-height: 400px;
+    /* Limit height so player doesn't have to scroll for miles */
+    min-height: 200px;
+  }
+
+  .quiz-overlay {
+    padding: 10px 0;
+  }
+
+  .big-btn {
+    padding: 12px 24px;
+    font-size: 1.1rem;
   }
 }
 
