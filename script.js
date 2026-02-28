@@ -87,17 +87,26 @@ async function handleSignUp(e) {
     alert('Passwords do not match');
     return;
   }
+
+  // prepare metadata: include username if provided, else it will be empty
+  const metadata = {};
+  if (username) {
+    metadata.username = username;
+    metadata.display_name = username;
+    metadata.full_name = username;
+  }
+
   const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
     options: {
-      data: { username }
+      data: metadata
     }
   });
   if (error) {
     alert('Sign up failed: ' + error.message);
   } else {
-    alert('Check your email for confirmation link');
+    alert('Success! Check your email for a confirmation link (if enabled in Supabase).');
     showLoginForm();
     signupForm.reset();
   }
@@ -116,15 +125,24 @@ function showLoginForm() {
 }
 function setLoggedIn(user) {
   currentUser = user;
-  const username = user.user_metadata?.username || user.email;
-  if (loginStatus) loginStatus.textContent = `Welcome, ${username}!`;
+  const meta = user.user_metadata || {};
+  // robust check for display name
+  const storedName = meta.display_name || meta.full_name || meta.username;
+  const displayName = (storedName && storedName.trim() !== '') ? storedName : user.email;
+
+  console.log("Logged in user:", user.email, "Display name:", displayName);
+
+  if (loginStatus) loginStatus.textContent = `Welcome, ${displayName}!`;
   if (loginForm) loginForm.style.display = 'none';
   if (signupForm) signupForm.style.display = 'none';
   if (showSignupLink) showSignupLink.style.display = 'none';
   if (loggedInMenu) loggedInMenu.style.display = 'flex';
-  // pre-fill settings form with current username
+
   const usernameInput = document.getElementById('settings-username');
-  if (usernameInput) usernameInput.value = username;
+  if (usernameInput) {
+    // only pre-fill if it's not the email fallback
+    usernameInput.value = (storedName && storedName.trim() !== '') ? storedName : "";
+  }
 }
 
 function setLoggedOut() {
@@ -154,7 +172,7 @@ async function handleSettingsSubmit(e) {
   const currentPassword = document.getElementById('settings-current-password').value;
 
   if (!currentPassword) {
-    alert('Current password is required to make changes');
+    alert('Current password is required to save any changes');
     return;
   }
 
@@ -164,36 +182,36 @@ async function handleSettingsSubmit(e) {
   }
 
   try {
-    // re-authenticate with current password
+    // First, verify current password before making any updates
     const { error: reAuthError } = await supabaseClient.auth.signInWithPassword({
       email: currentUser.email,
       password: currentPassword
     });
-    if (reAuthError) throw new Error('Current password is incorrect');
+    if (reAuthError) throw new Error('Incorrect current password');
 
-    // update username in metadata
-    if (newUsername) {
-      const { error: updateError } = await supabaseClient.auth.updateUser({
-        data: { username: newUsername }
-      });
-      if (updateError) throw updateError;
+    // Prepare update object
+    const updates = {};
+    if (newUsername !== undefined) {
+      updates.data = {
+        display_name: newUsername,
+        full_name: newUsername,
+        username: newUsername
+      };
     }
-
-    // update password if provided
     if (newPassword) {
-      const { error: pwError } = await supabaseClient.auth.updateUser({
-        password: newPassword
-      });
-      if (pwError) throw pwError;
+      updates.password = newPassword;
     }
 
-    alert('Settings updated successfully!');
+    const { data: { user }, error: updateError } = await supabaseClient.auth.updateUser(updates);
+
+    if (updateError) throw updateError;
+
+    alert('Profile updated successfully!');
     closeSettings();
-    // refresh current user data
-    const { data } = await supabaseClient.auth.getUser();
-    if (data.user) setLoggedIn(data.user);
+    if (user) setLoggedIn(user);
+
   } catch (err) {
-    alert('Error updating settings: ' + err.message);
+    alert('Error updating profile: ' + err.message);
   }
 }
 
