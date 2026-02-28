@@ -1,3 +1,204 @@
+// ---- Supabase authentication setup ----
+// replace with your own project credentials
+const SUPABASE_URL = 'https://wvteuvquycbgyyuylook.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_dms30CIhLFMCar0OHoGeYQ_pkH20lZC';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let loginForm, loginStatus, logoutBtn;
+let signupForm, showSignupLink, showLoginLink;
+let settingsBtn, closeSettingsBtn, settingsModal, settingsForm;
+let loggedInMenu;
+let currentUser = null;
+
+async function initializeAuth() {
+  // grab elements once DOM is ready
+  loginForm = document.getElementById('login-form');
+  signupForm = document.getElementById('signup-form');
+  showSignupLink = document.getElementById('show-signup');
+  showLoginLink = document.getElementById('show-login');
+  loginStatus = document.getElementById('login-status');
+  logoutBtn = document.getElementById('logout-btn');
+  settingsBtn = document.getElementById('settings-btn');
+  closeSettingsBtn = document.getElementById('close-settings');
+  settingsModal = document.getElementById('settings-modal');
+  settingsForm = document.getElementById('settings-form');
+  loggedInMenu = document.getElementById('logged-in-menu');
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', handleLogin);
+  }
+  if (signupForm) {
+    signupForm.addEventListener('submit', handleSignUp);
+  }
+  if (showSignupLink) {
+    showSignupLink.addEventListener('click', (e) => { e.preventDefault(); showSignupForm(); });
+  }
+  if (showLoginLink) {
+    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showLoginForm(); });
+  }
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', openSettings);
+  }
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener('click', closeSettings);
+  }
+  if (settingsForm) {
+    settingsForm.addEventListener('submit', handleSettingsSubmit);
+  }
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session && session.user) {
+    setLoggedIn(session.user);
+  }
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    if (session && session.user) setLoggedIn(session.user);
+    else setLoggedOut();
+  });
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = loginForm.email.value.trim();
+  const password = loginForm.password.value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert('Login failed: ' + error.message);
+  } else {
+    setLoggedIn(data.user);
+  }
+}
+
+async function handleLogout() {
+  await supabaseClient.auth.signOut();
+  setLoggedOut();
+}
+
+async function handleSignUp(e) {
+  e.preventDefault();
+  const username = signupForm.username.value.trim();
+  const email = signupForm.email.value.trim();
+  const password = signupForm.password.value;
+  const confirm = signupForm.confirm.value;
+  if (password !== confirm) {
+    alert('Passwords do not match');
+    return;
+  }
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username }
+    }
+  });
+  if (error) {
+    alert('Sign up failed: ' + error.message);
+  } else {
+    alert('Check your email for confirmation link');
+    showLoginForm();
+    signupForm.reset();
+  }
+}
+
+function showSignupForm() {
+  if (loginForm) loginForm.style.display = 'none';
+  if (signupForm) signupForm.style.display = 'flex';
+  if (showSignupLink) showSignupLink.style.display = 'none';
+}
+
+function showLoginForm() {
+  if (signupForm) signupForm.style.display = 'none';
+  if (loginForm) loginForm.style.display = 'flex';
+  if (showSignupLink) showSignupLink.style.display = 'block';
+}
+function setLoggedIn(user) {
+  currentUser = user;
+  const username = user.user_metadata?.username || user.email;
+  if (loginStatus) loginStatus.textContent = `Welcome, ${username}!`;
+  if (loginForm) loginForm.style.display = 'none';
+  if (signupForm) signupForm.style.display = 'none';
+  if (showSignupLink) showSignupLink.style.display = 'none';
+  if (loggedInMenu) loggedInMenu.style.display = 'flex';
+  // pre-fill settings form with current username
+  const usernameInput = document.getElementById('settings-username');
+  if (usernameInput) usernameInput.value = username;
+}
+
+function setLoggedOut() {
+  currentUser = null;
+  if (loginStatus) loginStatus.textContent = '';
+  if (loginForm) loginForm.style.display = 'flex';
+  if (signupForm) signupForm.style.display = 'none';
+  if (showSignupLink) showSignupLink.style.display = 'block';
+  if (loggedInMenu) loggedInMenu.style.display = 'none';
+  if (settingsModal) settingsModal.style.display = 'none';
+}
+
+function openSettings() {
+  if (settingsModal) settingsModal.style.display = 'flex';
+}
+
+function closeSettings() {
+  if (settingsModal) settingsModal.style.display = 'none';
+  settingsForm.reset();
+}
+
+async function handleSettingsSubmit(e) {
+  e.preventDefault();
+  const newUsername = document.getElementById('settings-username').value.trim();
+  const newPassword = document.getElementById('settings-new-password').value;
+  const confirmPassword = document.getElementById('settings-confirm-password').value;
+  const currentPassword = document.getElementById('settings-current-password').value;
+
+  if (!currentPassword) {
+    alert('Current password is required to make changes');
+    return;
+  }
+
+  if (newPassword && newPassword !== confirmPassword) {
+    alert('New passwords do not match');
+    return;
+  }
+
+  try {
+    // re-authenticate with current password
+    const { error: reAuthError } = await supabaseClient.auth.signInWithPassword({
+      email: currentUser.email,
+      password: currentPassword
+    });
+    if (reAuthError) throw new Error('Current password is incorrect');
+
+    // update username in metadata
+    if (newUsername) {
+      const { error: updateError } = await supabaseClient.auth.updateUser({
+        data: { username: newUsername }
+      });
+      if (updateError) throw updateError;
+    }
+
+    // update password if provided
+    if (newPassword) {
+      const { error: pwError } = await supabaseClient.auth.updateUser({
+        password: newPassword
+      });
+      if (pwError) throw pwError;
+    }
+
+    alert('Settings updated successfully!');
+    closeSettings();
+    // refresh current user data
+    const { data } = await supabaseClient.auth.getUser();
+    if (data.user) setLoggedIn(data.user);
+  } catch (err) {
+    alert('Error updating settings: ' + err.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initializeAuth);
+
 const QUIZZES = {
   europe: {
     id: "europe",
@@ -158,6 +359,7 @@ const QUIZZES = {
       "lichtenstein": "liechtenstein",
       "macedonia": "north macedonia",
       "burma": "myanmar",
+      "micronesia": "federated states of micronesia",
       "png": "papua new guinea",
       "st kitts": "saint kitts and nevis",
       "st kitts & nevis": "saint kitts and nevis",
@@ -236,9 +438,9 @@ const QUIZZES = {
     featureNameKeys: ["name", "ADMIN", "NAME"],
     notFoundLabel: "Africa quiz",
     mapBounds: {
-      minLon: -17,
-      maxLon: 51,
-      minLat: -35,
+      minLon: -25,
+      maxLon: 60,
+      minLat: -37,
       maxLat: 38
     },
     clickZoomFactor: 2.6,
@@ -267,7 +469,7 @@ const QUIZZES = {
     background: {
       dataWindowKey: "WORLD_GEOJSON",
       dataUrl: "./world.geojson",
-      featureNameKeys: ["ADMIN", "NAME", "name"],
+      featureNameKeys: ["name", "ADMIN", "NAME"],
       excludedNames: []
     }
   },
@@ -279,9 +481,9 @@ const QUIZZES = {
     featureNameKeys: ["name", "ADMIN", "NAME"],
     notFoundLabel: "Asia quiz",
     mapBounds: {
-      minLon: 25,
-      maxLon: 180,
-      minLat: -12,
+      minLon: 20,
+      maxLon: 160,
+      minLat: -15,
       maxLat: 80
     },
     clickZoomFactor: 2.4,
@@ -300,7 +502,7 @@ const QUIZZES = {
     background: {
       dataWindowKey: "WORLD_GEOJSON",
       dataUrl: "./world.geojson",
-      featureNameKeys: ["ADMIN", "NAME", "name"],
+      featureNameKeys: ["name", "ADMIN", "NAME"],
       excludedNames: []
     }
   },
@@ -312,8 +514,8 @@ const QUIZZES = {
     featureNameKeys: ["name", "ADMIN", "NAME"],
     notFoundLabel: "North America quiz",
     mapBounds: {
-      minLon: -170,
-      maxLon: -30,
+      minLon: -175,
+      maxLon: -45,
       minLat: 5,
       maxLat: 85
     },
@@ -331,7 +533,7 @@ const QUIZZES = {
     background: {
       dataWindowKey: "WORLD_GEOJSON",
       dataUrl: "./world.geojson",
-      featureNameKeys: ["ADMIN", "NAME", "name"],
+      featureNameKeys: ["name", "ADMIN", "NAME"],
       excludedNames: []
     }
   },
@@ -345,8 +547,8 @@ const QUIZZES = {
     mapBounds: {
       minLon: -85,
       maxLon: -30,
-      minLat: -60,
-      maxLat: 15
+      minLat: -57,
+      maxLat: 13
     },
     clickZoomFactor: 2.4,
     guessableCountries: [
@@ -360,7 +562,7 @@ const QUIZZES = {
     background: {
       dataWindowKey: "WORLD_GEOJSON",
       dataUrl: "./world.geojson",
-      featureNameKeys: ["ADMIN", "NAME", "name"],
+      featureNameKeys: ["name", "ADMIN", "NAME"],
       excludedNames: []
     }
   },
@@ -372,17 +574,17 @@ const QUIZZES = {
     featureNameKeys: ["name", "ADMIN", "NAME"],
     notFoundLabel: "Oceania quiz",
     mapBounds: {
-      minLon: 90,
+      minLon: 95,
       maxLon: 180,
-      minLat: -60,
-      maxLat: 30
+      minLat: -55,
+      maxLat: 10
     },
     clickZoomFactor: 2.4,
     guessableCountries: [
       "Australia","Fiji","Kiribati","Federated States of Micronesia","Marshall Islands","Nauru","New Zealand",
       "Palau","Papua New Guinea","Samoa","Solomon Islands","Tonga","Tuvalu","Vanuatu"
     ],
-    aliases: {},
+    aliases: { "micronesia": "federated states of micronesia", "fsm": "federated states of micronesia" },
     excludedNames: [],
     islandHaloCountries: [],
     coordinateTransform: null,
@@ -512,6 +714,25 @@ const HALO_CONFIG = {
 
 const MAP_WIDTH = 980;
 let MAP_HEIGHT = 620; // will be recalculated per quiz to preserve geographic aspect ratio
+
+// continent names for grouping
+const QUIZ_CONTINENT_NAME = {
+  europe: 'Europe',
+  africa: 'Africa',
+  asia: 'Asia',
+  north_america: 'North America',
+  south_america: 'South America',
+  oceania: 'Oceania'
+};
+
+// build sets of normalized names per continent for world quiz grouping
+const CONTINENT_SETS = {};
+for (const [qid, label] of Object.entries(QUIZ_CONTINENT_NAME)) {
+  const quiz = QUIZZES[qid];
+  if (quiz && Array.isArray(quiz.guessableCountries)) {
+    CONTINENT_SETS[label] = new Set(quiz.guessableCountries.map(normalizeName));
+  }
+}
 
 const homeScreen = document.getElementById("home-screen");
 const quizScreen = document.getElementById("quiz-screen");
@@ -1011,6 +1232,9 @@ function buildMap(features, backgroundFeatures = []) {
   const spanLat = bounds.maxLat - bounds.minLat;
   const height = spanLon > 0 ? width * (spanLat / spanLon) : MAP_HEIGHT;
   MAP_HEIGHT = height;
+  
+  // Update SVG viewBox to match new height
+  mapSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
   mapSvg.innerHTML = "";
   resetMapZoom();
@@ -1105,6 +1329,7 @@ function buildMap(features, backgroundFeatures = []) {
   }
 
   scoreEl.textContent = `0 / ${state.countries.length}`;
+  renderCountryList();
 }
 
 function applyGuess(input) {
@@ -1137,11 +1362,73 @@ function applyGuess(input) {
   }
   setMessage(`Correct: ${country.rawName}`, true);
   scoreEl.textContent = `${state.guessed.size} / ${state.countries.length}`;
+  renderCountryList();
 
   if (state.guessed.size === state.countries.length) {
     clearInterval(state.timerHandle);
     updateTimer();
     setMessage(`Quiz complete in ${formatTime(state.elapsedMs)}!`, true);
+  }
+}
+
+function renderCountryList() {
+  const container = document.getElementById("country-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const sorted = state.countries.slice().sort((a, b) =>
+    a.rawName.localeCompare(b.rawName)
+  );
+
+  if (state.activeQuizId === "world_196") {
+    // create a column for each continent
+    const assigned = new Set();
+    for (const [continent, set] of Object.entries(CONTINENT_SETS)) {
+      const col = document.createElement("div");
+      col.className = "country-column";
+      const hdr = document.createElement("h3");
+      hdr.textContent = continent;
+      col.appendChild(hdr);
+      sorted.forEach((c) => {
+        if (set.has(c.canonical)) {
+          assigned.add(c.canonical);
+          const item = document.createElement("div");
+          item.className = "country-item";
+          item.dataset.country = c.canonical;
+          item.textContent = state.guessed.has(c.canonical) ? c.rawName : "".padEnd(c.rawName.length, "_");
+          col.appendChild(item);
+        }
+      });
+      container.appendChild(col);
+    }
+    // others not categorized
+    const others = sorted.filter((c) => !assigned.has(c.canonical));
+    if (others.length) {
+      const col = document.createElement("div");
+      col.className = "country-column";
+      const hdr = document.createElement("h3");
+      hdr.textContent = "Other";
+      col.appendChild(hdr);
+      others.forEach((c) => {
+        const item = document.createElement("div");
+        item.className = "country-item";
+        item.dataset.country = c.canonical;
+        item.textContent = state.guessed.has(c.canonical) ? c.rawName : "".padEnd(c.rawName.length, "_");
+        col.appendChild(item);
+      });
+      container.appendChild(col);
+    }
+  } else {
+    const col = document.createElement("div");
+    col.className = "country-column";
+    sorted.forEach((c) => {
+      const item = document.createElement("div");
+      item.className = "country-item";
+      item.dataset.country = c.canonical;
+      item.textContent = state.guessed.has(c.canonical) ? c.rawName : "".padEnd(c.rawName.length, "_");
+      col.appendChild(item);
+    });
+    container.appendChild(col);
   }
 }
 
@@ -1245,6 +1532,7 @@ startSouthAmericaQuizBtn.addEventListener("click", () => startQuiz("south_americ
 startOceaniaQuizBtn.addEventListener("click", () => startQuiz("oceania"));
 startWorldQuizBtn.addEventListener("click", () => startQuiz("world_196"));
 backHomeBtn.addEventListener("click", stopQuiz);
+
 
 if (zoomInBtn && zoomOutBtn) {
   zoomInBtn.addEventListener("click", () => { pageZoom *= 1.25; updatePageZoom(); });

@@ -9,49 +9,95 @@
 <body>
   <main class="app">
     <section id="home-screen" class="panel active" aria-labelledby="home-title">
-      <h1 id="home-title">WebQuizes</h1>
-      <p class="subtitle">Quick geography challenge</p>
-      <article class="quiz-card">
-        <h2>Name All European Countries</h2>
-        <p>Type country names. Every correct country on the map turns from yellow to green.</p>
-        <button id="start-europe-quiz-btn" class="primary-btn">Start Europe Quiz</button>
-      </article>
-      <article class="quiz-card">
-        
-        <h2>Name All US States</h2>
-        <p>Includes Alaska and Hawaii as map insets. Type full state names to turn them green.</p>
-        <button id="start-us-quiz-btn" class="primary-btn">Start US States Quiz</button>
-      </article>
-      <article class="quiz-card">
-        <h2>Name All African Countries</h2>
-        <p>Africa-only map and country list from the world quiz dataset.</p>
-        <button id="start-africa-quiz-btn" class="primary-btn">Start Africa Quiz</button>
-      </article>
-      <article class="quiz-card">
-        <h2>Name All Asian Countries</h2>
-        <p>Asia-only map and country list from the world quiz dataset.</p>
-        <button id="start-asia-quiz-btn" class="primary-btn">Start Asia Quiz</button>
-      </article>
-      <article class="quiz-card">
-        <h2>Name All North American Countries</h2>
-        <p>Includes Central America and Caribbean; uses world dataset.</p>
-        <button id="start-northamerica-quiz-btn" class="primary-btn">Start North America Quiz</button>
-      </article>
-      <article class="quiz-card">
-        <h2>Name All South American Countries</h2>
-        <p>South America only map and list from world dataset.</p>
-        <button id="start-southamerica-quiz-btn" class="primary-btn">Start South America Quiz</button>
-      </article>
-      <article class="quiz-card">
-        <h2>Name All Oceanian Countries</h2>
-        <p>Oceania quiz covering Australia, Pacific islands, and New Zealand.</p>
-        <button id="start-oceania-quiz-btn" class="primary-btn">Start Oceania Quiz</button>
-      </article>
-      <article class="quiz-card">
-        <h2>Name 196 Countries of the World</h2>
-        <p>Full world map challenge with 196 accepted countries.</p>
-        <button id="start-world-quiz-btn" class="primary-btn">Start World Quiz</button>
-      </article>
+      <div class="home-header">
+        <h1 id="home-title">WebQuizes</h1>
+        <p class="subtitle">Quick geography challenge</p>
+      </div>
+      <!-- two-column layout: quizzes on left, login on right -->
+      <div class="home-body">
+        <div class="home-content">
+          <article class="quiz-card">
+          <h2>Name All European Countries</h2>
+          <p>Type country names. Every correct country on the map turns from yellow to green.</p>
+          <button id="start-europe-quiz-btn" class="primary-btn">Start Europe Quiz</button>
+        </article>
+        <article class="quiz-card">
+
+          <h2>Name All US States</h2>
+          <p>Includes Alaska and Hawaii as map insets. Type full state names to turn them green.</p>
+          <button id="start-us-quiz-btn" class="primary-btn">Start US States Quiz</button>
+        </article>
+        <article class="quiz-card">
+          <h2>Name All African Countries</h2>
+          <p>Africa-only map and country list from the world quiz dataset.</p>
+          <button id="start-africa-quiz-btn" class="primary-btn">Start Africa Quiz</button>
+        </article>
+        <article class="quiz-card">
+          <h2>Name All Asian Countries</h2>
+          <p>Asia-only map and country list from the world quiz dataset.</p>
+          <button id="start-asia-quiz-btn" class="primary-btn">Start Asia Quiz</button>
+        </article>
+        <article class="quiz-card">
+          <h2>Name All North American Countries</h2>
+          <p>Includes Central America and Caribbean; uses world dataset.</p>
+          <button id="start-northamerica-quiz-btn" class="primary-btn">Start North America Quiz</button>
+        </article>
+        <article class="quiz-card">
+          <h2>Name All South American Countries</h2>
+          <p>South America only map and list from world dataset.</p>
+          <button id="start-southamerica-quiz-btn" class="primary-btn">Start South America Quiz</button>
+        </article>
+        <article class="quiz-card">
+          <h2>Name All Oceanian Countries</h2>
+          <p>Oceania quiz covering Australia, Pacific islands, and New Zealand.</p>
+          <button id="start-oceania-quiz-btn" class="primary-btn">Start Oceania Quiz</button>
+        </article>
+        <article class="quiz-card">
+          <h2>Name 196 Countries of the World</h2>
+          <p>Full world map challenge with 196 accepted countries.</p>
+          <button id="start-world-quiz-btn" class="primary-btn">Start World Quiz</button>
+        </article>
+        </div>
+        <aside id="login-panel">
+        <h2>Login</h2>
+        <div id="login-status"></div>
+        <form id="login-form">
+          <input type="email" name="email" placeholder="Email" required />
+          <input type="password" name="password" placeholder="Password" required />
+          <button type="submit" class="primary-btn">Login</button>
+        </form>
+        <p><a href="#" id="show-signup">Don't have an account? Sign up</a></p>
+        <form id="signup-form" style="display:none;">
+          <input type="text" name="username" placeholder="Display Name (optional)" />
+          <input type="email" name="email" placeholder="Email" required />
+          <input type="password" name="password" placeholder="Password" required />
+          <input type="password" name="confirm" placeholder="Confirm password" required />
+          <button type="submit" class="primary-btn">Sign Up</button>
+          <p><a href="#" id="show-login">Already have an account? Log in</a></p>
+        </form>
+        <div id="logged-in-menu" style="display:none;">
+          <button id="settings-btn" class="primary-btn">Settings</button>
+          <button id="logout-btn" class="secondary-btn">Logout</button>
+        </div>
+      </aside>
+      <!-- Settings modal -->
+      <div id="settings-modal" style="display:none;" class="modal-overlay">
+        <div class="modal-content">
+          <h2>Settings</h2>
+          <form id="settings-form">
+            <label>Username</label>
+            <input type="text" id="settings-username" placeholder="Username" />
+            <label>New Password (leave blank to keep current)</label>
+            <input type="password" id="settings-new-password" placeholder="New password" />
+            <input type="password" id="settings-confirm-password" placeholder="Confirm password" />
+            <label>Current Password</label>
+            <input type="password" id="settings-current-password" placeholder="Current password (required)" required />
+            <button type="submit" class="primary-btn">Save Changes</button>
+          </form>
+          <button id="close-settings" class="secondary-btn">Close</button>
+        </div>
+      </div>
+      </div> <!-- end home-body -->
     </section>
 
     <section id="quiz-screen" class="panel" aria-labelledby="quiz-title">
@@ -74,8 +120,11 @@
 
       <p id="feedback" class="feedback" aria-live="polite"></p>
 
-      <div id="map-wrap" class="map-wrap">
-        <svg id="map-svg" viewBox="0 0 980 620" role="img" aria-label="Map of Europe"></svg>
+      <div class="map-and-list">
+        <div id="map-wrap" class="map-wrap">
+          <svg id="map-svg" viewBox="0 0 980 620" role="img" aria-label="Map of Europe"></svg>
+        </div>
+        <div id="country-list" class="country-list" aria-live="polite"></div>
       </div>
 
       <button id="back-home-btn" class="secondary-btn">Back to Home</button>
@@ -84,6 +133,8 @@
 
   <script src="world-data.js"></script>
   <script src="us-states-data.js"></script>
+  <!-- supabase client for authentication -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="script.js"></script>
 </body>
 </html>
