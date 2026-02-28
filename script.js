@@ -772,6 +772,10 @@ const mapSvg = document.getElementById("map-svg");
 const quizTitleEl = document.getElementById("quiz-title");
 const zoomInBtn = document.getElementById("zoom-in-btn");
 const zoomOutBtn = document.getElementById("zoom-out-btn");
+const pbDisplayEl = document.getElementById("personal-best-display");
+const giveUpBtn = document.getElementById("give-up-btn");
+const quizOverlay = document.getElementById("quiz-overlay");
+const startGameBtn = document.getElementById("start-game-btn");
 
 let pageZoom = 1;
 
@@ -803,8 +807,80 @@ const state = {
   message: "",
   timerHandle: null,
   viewBox: { x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT },
-  isZoomedIn: false
+  isZoomedIn: false,
+  personalBest: { score: 0, timeMs: 0 }
 };
+
+function updatePBDisplay() {
+  if (!pbDisplayEl) return;
+  const { score, timeMs } = state.personalBest;
+  const total = state.countries.length;
+
+  if (score === 0) {
+    pbDisplayEl.textContent = "PB: --";
+  } else if (score === total && total > 0 && timeMs > 0) {
+    pbDisplayEl.textContent = `PB: ${formatTime(timeMs)}`;
+  } else {
+    pbDisplayEl.textContent = `PB: ${score}/${total}`;
+  }
+}
+
+async function savePB() {
+  if (!currentUser) return;
+
+  const currentScore = state.guessed.size;
+  const currentTime = state.elapsedMs;
+  const total = state.countries.length;
+  const oldPB = state.personalBest;
+
+  // Decide if this is a new PB
+  let isBetter = false;
+  if (currentScore > oldPB.score) {
+    isBetter = true;
+  } else if (currentScore === total && total > 0) {
+    if (oldPB.score < total || oldPB.timeMs === 0 || currentTime < oldPB.timeMs) {
+      isBetter = true;
+    }
+  }
+
+  // Always save to the new quiz_results TABLE for the leaderboard
+  try {
+    const { error: insertError } = await supabaseClient
+      .from('quiz_results')
+      .insert([
+        {
+          user_id: currentUser.id,
+          quiz_id: state.activeQuizId,
+          score: currentScore,
+          total_score: total,
+          time_ms: currentTime
+        }
+      ]);
+    if (insertError) console.error("Error saving result to table:", insertError.message);
+  } catch (e) {
+    console.error("Supabase insert error:", e);
+  }
+
+  // Update personalBest metadata for local UI convenience
+  if (isBetter) {
+    const newPB = { score: currentScore, timeMs: (currentScore === total ? currentTime : 0) };
+    state.personalBest = newPB;
+    updatePBDisplay();
+
+    const oldRecords = currentUser.user_metadata?.quiz_records || {};
+    const newRecords = { ...oldRecords, [state.activeQuizId]: newPB };
+
+    try {
+      const { data, error } = await supabaseClient.auth.updateUser({
+        data: { quiz_records: newRecords }
+      });
+      if (error) console.error("Error saving metadata PB:", error.message);
+      else if (data.user) currentUser = data.user;
+    } catch (e) {
+      console.error("Supabase metadata update error:", e);
+    }
+  }
+}
 
 function normalizeName(name) {
   return name
@@ -1383,10 +1459,38 @@ function applyGuess(input) {
   renderCountryList();
 
   if (state.guessed.size === state.countries.length) {
-    clearInterval(state.timerHandle);
-    updateTimer();
-    setMessage(`Quiz complete in ${formatTime(state.elapsedMs)}!`, true);
+    endQuiz(true);
   }
+}
+
+function handleGiveUp() {
+  if (state.mode !== "quiz" || state.guessed.size === state.countries.length) return;
+  endQuiz(false);
+}
+
+function endQuiz(win = false) {
+  clearInterval(state.timerHandle);
+  updateTimer();
+
+  // reveal missed
+  if (!win) {
+    const missed = state.countries.filter(c => !state.guessed.has(c.canonical));
+    for (const c of missed) {
+      for (const p of c.paths) {
+        p.style.fill = "#d44c4c";
+      }
+    }
+  }
+
+  const resultMsg = win ? `Quiz complete in ${formatTime(state.elapsedMs)}!` : `Quiz ended. You found ${state.guessed.size}/${state.countries.length}.`;
+  setMessage(resultMsg, win);
+  savePB();
+
+  // Show Restart option
+  quizOverlay.style.display = "flex";
+  startGameBtn.textContent = "Play Again";
+  guessForm.style.display = "none";
+  giveUpBtn.style.display = "none";
 }
 
 function renderCountryList() {
@@ -1521,18 +1625,61 @@ async function startQuiz(quizId) {
       throw new Error("No locations were parsed from map data");
     }
 
-    state.startTime = Date.now();
     state.elapsedMs = 0;
     timerEl.textContent = "00:00";
     clearInterval(state.timerHandle);
-    state.timerHandle = setInterval(updateTimer, 250);
+    // Timer will be started in beginQuiz() instead of here
 
-    setMessage("Map ready. Start typing names.", true);
+    setMessage("Map ready. Click Start Quiz to begin.", true);
+
+    // load PB display
+    const records = currentUser?.user_metadata?.quiz_records || {};
+    state.personalBest = records[quizId] || { score: 0, timeMs: 0 };
+    updatePBDisplay();
+
+    // Show start button
+    quizOverlay.style.display = "flex";
+    startGameBtn.textContent = "Start Quiz";
+    guessForm.style.display = "none";
+    giveUpBtn.style.display = "none";
+
+    // reset timer display
+    timerEl.textContent = "00:00";
+    state.elapsedMs = 0;
+
     guessInput.value = "";
-    guessInput.focus();
   } catch (err) {
     setMessage(`Failed to load map: ${err.message}`);
   }
+}
+
+function beginQuiz() {
+  // Clear any previous color reveal
+  for (const c of state.countries) {
+    for (const p of c.paths) {
+      p.style.fill = "";
+      p.classList.remove("guessed");
+    }
+  }
+  for (const halo of mapSvg.querySelectorAll('.island-halo')) {
+    halo.classList.remove("guessed");
+  }
+  state.guessed.clear();
+  renderCountryList();
+  scoreEl.textContent = `0 / ${state.countries.length}`;
+
+  state.startTime = Date.now();
+  state.elapsedMs = 0;
+  timerEl.textContent = "00:00";
+  clearInterval(state.timerHandle);
+  state.timerHandle = setInterval(updateTimer, 250);
+
+  quizOverlay.style.display = "none";
+  guessForm.style.display = "flex";
+  giveUpBtn.style.display = "inline-block";
+  guessInput.value = "";
+  guessInput.focus();
+  setMessage("Type names to begin!", true);
 }
 
 function stopQuiz() {
@@ -1550,6 +1697,8 @@ startSouthAmericaQuizBtn.addEventListener("click", () => startQuiz("south_americ
 startOceaniaQuizBtn.addEventListener("click", () => startQuiz("oceania"));
 startWorldQuizBtn.addEventListener("click", () => startQuiz("world_196"));
 backHomeBtn.addEventListener("click", stopQuiz);
+if (giveUpBtn) giveUpBtn.addEventListener("click", handleGiveUp);
+if (startGameBtn) startGameBtn.addEventListener("click", beginQuiz);
 
 
 if (zoomInBtn && zoomOutBtn) {

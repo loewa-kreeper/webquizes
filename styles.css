@@ -173,7 +173,26 @@ h1 {
   border: 2px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 1rem;
+  font-size: 1.1rem;
+}
+
+.quiz-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+  margin-bottom: 8px;
+}
+
+.big-btn {
+  padding: 16px 32px;
+  font-size: 1.3rem;
+  letter-spacing: 0.05em;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.big-btn:hover {
+  transform: scale(1.05);
 }
 
 button {
@@ -433,9 +452,32 @@ button {
   }
 }
 
-.zoom-controls {
+.pb-badge {
+  background: var(--accent);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.warn-btn {
+  background: #d44c4c;
+  color: #fff;
+  margin-top: 12px;
+}
+
+.warn-btn:hover {
+  background: #b63a3a;
+}
+
+.quiz-controls-bottom {
   display: flex;
-  gap: 4px;
+  gap: 12px;
   align-items: center;
 }
 
