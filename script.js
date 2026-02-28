@@ -4,6 +4,38 @@ const SUPABASE_URL = 'https://wvteuvquycbgyyuylook.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_dms30CIhLFMCar0OHoGeYQ_pkH20lZC';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ---- Titles & Badges ----
+const TITLES = [
+  { id: "none", name: "No Title", level: 0, color: "#6b7280" },
+  { id: "beginner", name: "Beginner", level: 2, color: "#94a3b8" },
+  { id: "rookie", name: "Rookie", level: 5, color: "#10b981" },
+  { id: "pro", name: "Pro", level: 10, color: "#3b82f6" },
+  { id: "expert", name: "Expert", level: 15, color: "#8b5cf6" },
+  { id: "geograph", name: "Geograph", level: 25, color: "#ec4899" },
+  { id: "veteran", name: "Veteran", level: 35, color: "#ef4444" },
+  { id: "geo_god", name: "Geo God", level: 50, color: "#f59e0b" }
+];
+
+function renderTitleBadge(titleId, level = 0) {
+  // If no specific title chosen, auto-assign based on level
+  let idToUse = titleId;
+  if (!idToUse || idToUse === "none") {
+    // find highest unlocked title
+    const unlocked = [...TITLES].reverse().find(t => level >= t.level);
+    idToUse = unlocked ? unlocked.id : "none";
+  }
+
+  const title = TITLES.find(t => t.id === idToUse);
+  if (!title || title.id === "none") return "";
+
+  return `<span class="title-badge" style="background: ${title.color} !important; display: inline-block !important; visibility: visible !important; opacity: 1 !important;">${title.name}</span>`;
+}
+
+function renderLevelBadge(level) {
+  if (!level) return "";
+  return `<span class="leader-level" title="Level ${level}">${level}</span>`;
+}
+
 let loginForm, loginStatus, logoutBtn;
 let signupForm, showSignupLink, showLoginLink;
 let settingsBtn, closeSettingsBtn, settingsModal, settingsForm;
@@ -58,6 +90,9 @@ async function initializeAuth() {
     if (session && session.user) setLoggedIn(session.user);
     else setLoggedOut();
   });
+
+  // Always show rank for guests initially
+  updateRankDisplay();
 
   // Inject a Test Quiz button for the user (temporary for testing)
   const homeContent = document.querySelector('.home-content');
@@ -136,25 +171,65 @@ function showLoginForm() {
   if (loginForm) loginForm.style.display = 'flex';
   if (showSignupLink) showSignupLink.style.display = 'block';
 }
+function getLevelInfo(totalXp) {
+  let level = 1;
+  let xpLeft = totalXp;
+  let req = 100;
+
+  while (xpLeft >= req) {
+    xpLeft -= req;
+    level++;
+    req += 50;
+  }
+  return { level, xpInLevel: xpLeft, xpRequired: req };
+}
+
+function updateRankDisplay() {
+  const totalXp = currentUser?.user_metadata?.total_xp || 0;
+  const info = getLevelInfo(totalXp);
+  const pct = (info.xpInLevel / info.xpRequired) * 100;
+
+  // Update Main Menu (Home Screen)
+  const homeLevelEl = document.getElementById('home-user-level');
+  const homeBarFill = document.getElementById('home-xp-bar-fill');
+  const homeXpInfo = document.getElementById('home-xp-info');
+
+  if (homeLevelEl) homeLevelEl.textContent = info.level;
+  if (homeBarFill) homeBarFill.style.width = `${pct}%`;
+  if (homeXpInfo) homeXpInfo.textContent = `${info.xpInLevel} / ${info.xpRequired} XP`;
+
+  // Update Quiz Screen Header
+  const qLevelEl = document.getElementById('quiz-user-level');
+  const qBarFill = document.getElementById('quiz-xp-bar-fill');
+
+  if (qLevelEl) qLevelEl.textContent = info.level;
+  if (qBarFill) qBarFill.style.width = `${pct}%`;
+}
+
 function setLoggedIn(user) {
   currentUser = user;
   const meta = user.user_metadata || {};
-  // robust check for display name
-  const storedName = meta.display_name || meta.full_name || meta.username;
-  const displayName = (storedName && storedName.trim() !== '') ? storedName : user.email;
 
-  console.log("Logged in user:", user.email, "Display name:", displayName);
+  // AGGRESSIVE NAME RESOLUTION: Ensure email never appears if a name exists
+  const rawName = meta.display_name || meta.username || meta.full_name || meta.name;
+  const displayName = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : user.email;
 
-  if (loginStatus) loginStatus.textContent = `Welcome, ${displayName}!`;
+  console.log("LOGIN DETECTED:", { email: user.email, resolvedName: displayName });
+
+  if (loginStatus) {
+    const titleHtml = renderTitleBadge(meta.selected_title || "none", getLevelInfo(meta.total_xp || 0).level);
+    loginStatus.innerHTML = `Welcome, <span style="color: #f59e0b; font-weight: 800;">${displayName}</span>! ${titleHtml}`;
+  }
   if (loginForm) loginForm.style.display = 'none';
   if (signupForm) signupForm.style.display = 'none';
   if (showSignupLink) showSignupLink.style.display = 'none';
   if (loggedInMenu) loggedInMenu.style.display = 'flex';
 
+  updateRankDisplay();
+
   const usernameInput = document.getElementById('settings-username');
   if (usernameInput) {
-    // only pre-fill if it's not the email fallback
-    usernameInput.value = (storedName && storedName.trim() !== '') ? storedName : "";
+    usernameInput.value = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : "";
   }
 }
 
@@ -170,11 +245,30 @@ function setLoggedOut() {
 
 function openSettings() {
   if (settingsModal) settingsModal.style.display = 'flex';
+
+  // Popuplate Title choices
+  const titleSelect = document.getElementById('settings-title');
+  if (titleSelect && currentUser) {
+    const currentXp = currentUser.user_metadata?.total_xp || 0;
+    const info = getLevelInfo(currentXp);
+    const savedTitle = currentUser.user_metadata?.selected_title || "none";
+
+    titleSelect.innerHTML = "";
+    TITLES.forEach(t => {
+      const isLocked = info.level < t.level;
+      const option = document.createElement('option');
+      option.value = t.id;
+      // For testing, make them all available as requested, but show level req
+      option.textContent = t.name + (t.level > 0 ? ` (Lv ${t.level})` : "") + (isLocked ? " 🔒" : "");
+      option.selected = (t.id === savedTitle);
+      titleSelect.appendChild(option);
+    });
+  }
 }
 
 function closeSettings() {
   if (settingsModal) settingsModal.style.display = 'none';
-  settingsForm.reset();
+  if (settingsForm) settingsForm.reset();
 }
 
 async function handleSettingsSubmit(e) {
@@ -184,47 +278,76 @@ async function handleSettingsSubmit(e) {
   const confirmPassword = document.getElementById('settings-confirm-password').value;
   const currentPassword = document.getElementById('settings-current-password').value;
 
-  if (!currentPassword) {
-    alert('Current password is required to save any changes');
+  // STRICT CHECK: Password is ONLY required if setting a NEW password
+  const isChangingPassword = newPassword && newPassword.trim() !== '';
+
+  if (isChangingPassword && !currentPassword) {
+    alert('Security Check: You must enter your Current Password to change your password settings.');
     return;
   }
 
-  if (newPassword && newPassword !== confirmPassword) {
-    alert('New passwords do not match');
+  if (isChangingPassword && newPassword !== confirmPassword) {
+    alert('The new passwords you entered do not match.');
     return;
   }
 
   try {
-    // First, verify current password before making any updates
-    const { error: reAuthError } = await supabaseClient.auth.signInWithPassword({
-      email: currentUser.email,
-      password: currentPassword
-    });
-    if (reAuthError) throw new Error('Incorrect current password');
-
-    // Prepare update object
-    const updates = {};
-    if (newUsername !== undefined) {
-      updates.data = {
-        display_name: newUsername,
-        full_name: newUsername,
-        username: newUsername
-      };
+    // Only verify password if user is actually trying to change it
+    if (isChangingPassword) {
+      console.log("Verifying current password for password update...");
+      const { error: reAuthError } = await supabaseClient.auth.signInWithPassword({
+        email: currentUser.email,
+        password: currentPassword
+      });
+      if (reAuthError) throw new Error('Incorrect current password. Please try again.');
     }
-    if (newPassword) {
+
+    // Prepare update object - always include current metadata to avoid wipes
+    const updates = { data: { ...(currentUser.user_metadata || {}) } };
+
+    if (newUsername !== undefined && newUsername !== '') {
+      updates.data.display_name = newUsername;
+      updates.data.full_name = newUsername;
+      updates.data.username = newUsername;
+    }
+
+    const titleSelect = document.getElementById('settings-title');
+    if (titleSelect) {
+      updates.data.selected_title = titleSelect.value;
+      console.log("Selected title for update:", titleSelect.value);
+    }
+
+    if (isChangingPassword) {
       updates.password = newPassword;
     }
 
     const { data: { user }, error: updateError } = await supabaseClient.auth.updateUser(updates);
-
     if (updateError) throw updateError;
 
-    alert('Profile updated successfully!');
-    closeSettings();
-    if (user) setLoggedIn(user);
+    // LIVE UPDATE SYNC: Update all past records with the new name, title, AND level
+    const finalTitle = updates.data.selected_title || "none";
+    const finalName = (updates.data.display_name || updates.data.username || currentUser.email);
+    const finalLevel = getLevelInfo(updates.data.total_xp || 0).level;
 
-  } catch (err) {
-    alert('Error updating profile: ' + err.message);
+    console.log("SYCNING LIVE PROFILES:", { finalName, finalTitle, finalLevel });
+
+    // This ensures past records on the leaderboard change to the CURRENT state
+    await supabaseClient
+      .from('quiz_results')
+      .update({
+        user_name: finalName,
+        user_title: finalTitle,
+        user_level: finalLevel
+      })
+      .eq('user_id', currentUser.id);
+
+    setLoggedIn(user);
+    alert('Settings saved! Your leaderboard name and title have been updated.');
+    closeSettings();
+    updateRankDisplay();
+    updateLeaderboard();
+  } catch (error) {
+    alert('Update Failed: ' + error.message);
   }
 }
 
@@ -876,10 +999,20 @@ async function savePB() {
   // Always save to the new quiz_results TABLE for the leaderboard
   try {
     const meta = currentUser.user_metadata || {};
-    // Priority: display_name -> full_name -> username -> email fallback
-    const dName = meta.display_name || meta.full_name || meta.username || currentUser.email;
+    // ALWAYS use current profile data
+    const rawName = meta.display_name || meta.username || meta.full_name || meta.name;
+    const dName = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : currentUser.email;
 
-    console.log("Saving result to DB for user:", dName);
+    const dLevelInfo = getLevelInfo(meta.total_xp || 0);
+    const dLevel = dLevelInfo.level;
+
+    let dTitle = meta.selected_title || "none";
+    if (dTitle === "none") {
+      const best = [...TITLES].reverse().find(t => dLevel >= t.level);
+      dTitle = best ? best.id : "none";
+    }
+
+    console.log("Saving new record with CURRENT status:", { dName, dTitle, dLevel });
 
     const { error: insertError } = await supabaseClient
       .from('quiz_results')
@@ -887,13 +1020,54 @@ async function savePB() {
         {
           user_id: currentUser.id,
           user_name: dName,
+          user_title: dTitle,
+          user_level: dLevel,
           quiz_id: state.activeQuizId,
           score: currentScore,
           total_score: total,
           time_ms: currentTime
         }
       ]);
-    if (insertError) console.error("Error saving result to table:", insertError.message);
+
+    // If that fails (maybe column missing), try without level/title
+    if (insertError) {
+      console.warn("Retrying save without newer columns...");
+      await supabaseClient
+        .from('quiz_results')
+        .insert([
+          {
+            user_id: currentUser.id,
+            user_name: dName,
+            quiz_id: state.activeQuizId,
+            score: currentScore,
+            total_score: total,
+            time_ms: currentTime
+          }
+        ]);
+    }
+    if (insertError) {
+      console.error("LEADERBOARD SAVE ERROR:", insertError.message, insertError.details);
+    } else {
+      console.log("LEADERBOARD SAVE SUCCESS");
+    }
+
+    // XP AWARDING LOGIC
+    if (total > 0) {
+      const xpGained = Math.floor((currentScore / total) * 100);
+      const oldTotalXp = meta.total_xp || 0;
+      const newTotalXp = oldTotalXp + xpGained;
+
+      console.log(`XP Awarded: ${xpGained}. New Total: ${newTotalXp}`);
+
+      const { data: updatedData, error: xpError } = await supabaseClient.auth.updateUser({
+        data: { total_xp: newTotalXp }
+      });
+      if (xpError) console.error("Error updating XP:", xpError.message);
+      else if (updatedData.user) {
+        currentUser = updatedData.user;
+        updateRankDisplay();
+      }
+    }
   } catch (e) {
     console.error("Supabase insert error:", e);
   }
@@ -927,54 +1101,139 @@ async function updateLeaderboard() {
 
 async function fetchLeaderboard(quizId) {
   try {
-    const { data, error } = await supabaseClient
+    // Show loading state
+    const list = document.getElementById("leaderboard-list");
+    if (list) list.innerHTML = `<li class="leader-empty">Loading scores...</li>`;
+
+    // Fetch up to 100 rows to find unique users and local rank
+    let { data, error } = await supabaseClient
       .from('quiz_results')
-      .select('user_name, score, total_score, time_ms')
+      .select('user_id, user_name, user_title, user_level, score, total_score, time_ms')
       .eq('quiz_id', quizId)
       .order('score', { ascending: false })
       .order('time_ms', { ascending: true })
-      .limit(5);
+      .limit(100);
 
     if (error) {
-      console.error("Error fetching leaderboard:", error.message);
-      return [];
+      console.warn("Extended fetch failed, trying fallback...");
+      const fallback = await supabaseClient
+        .from('quiz_results')
+        .select('*')
+        .eq('quiz_id', quizId)
+        .order('score', { ascending: false })
+        .order('time_ms', { ascending: true })
+        .limit(100);
+
+      if (fallback.error) throw fallback.error;
+      return fallback.data;
     }
     return data;
   } catch (e) {
-    console.error("Failed to fetch leaderboard:", e);
+    console.error("Leaderboard fetch error:", e);
     return [];
   }
 }
 
-function renderLeaderboard(scores) {
+function renderLeaderboard(allData) {
   const container = document.getElementById("leaderboard-container");
   const list = document.getElementById("leaderboard-list");
   if (!container || !list) return;
 
   list.innerHTML = "";
-  if (!scores || scores.length === 0) {
+  if (!allData || allData.length === 0) {
     list.innerHTML = `<li class="leader-empty">No results found yet. Be the first!</li>`;
     return;
   }
 
-  scores.forEach((entry, idx) => {
+  // Deduplication: One record per user (their absolute best)
+  const uniqueUsers = [];
+  const seenIds = new Set();
+
+  let userRank = -1;
+  let userEntry = null;
+
+  for (let i = 0; i < allData.length; i++) {
+    const item = allData[i];
+    if (!item.user_id) continue;
+
+    if (!seenIds.has(item.user_id)) {
+      seenIds.add(item.user_id);
+      uniqueUsers.push(item);
+
+      // If this is the current user, record their rank among unique bests
+      if (currentUser && item.user_id === currentUser.id && userRank === -1) {
+        userRank = uniqueUsers.length;
+        userEntry = item;
+      }
+    }
+  }
+
+  // Take top 5 for the display
+  const top5 = uniqueUsers.slice(0, 5);
+
+  top5.forEach((entry, idx) => {
     const li = document.createElement("li");
     li.className = `leader-item rank-${idx + 1}`;
 
-    // display time if fully complete, otherwise score
+    const isSelf = currentUser && entry.user_id === currentUser.id;
+    if (isSelf) {
+      li.classList.add("current-user-rank");
+      li.style.borderLeft = "4px solid #f59e0b";
+      li.style.background = "rgba(245, 158, 11, 0.1)";
+    }
+
     const displayVal = (entry.score === entry.total_score && entry.total_score > 0)
       ? formatTime(entry.time_ms)
       : `${entry.score}/${entry.total_score}`;
 
+    const titleHtml = renderTitleBadge(entry.user_title || "none", entry.user_level || 1);
+
+    li.innerHTML = `
+      <div class="leader-rank-info" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+        <span class="rank-pill">${idx + 1}</span>
+        <div class="leader-name-row" style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
+          ${renderLevelBadge(entry.user_level)}
+          <span class="leader-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${entry.user_name || "Guest"}
+          </span>
+          ${titleHtml}
+        </div>
+      </div>
+      <span class="leader-val" style="font-weight: 800; color: #b45309; padding-left: 12px;">${displayVal}</span>
+    `;
+    list.appendChild(li);
+  });
+
+  // If user is logged in but not in Top 5, show their personal rank below
+  if (currentUser && userRank > 5) {
+    const divider = document.createElement("li");
+    divider.className = "leader-divider";
+    divider.innerHTML = "<span>•••</span>";
+    list.appendChild(divider);
+
+    const li = document.createElement("li");
+    li.className = `leader-item current-user-rank`;
+    li.style.borderLeft = "4px solid #f59e0b";
+    li.style.marginTop = "4px";
+
+    const displayVal = (userEntry.score === userEntry.total_score && userEntry.total_score > 0)
+      ? formatTime(userEntry.time_ms)
+      : `${userEntry.score}/${userEntry.total_score}`;
+
     li.innerHTML = `
       <div class="leader-rank-info">
-        <span class="rank-pill">${idx + 1}</span>
-        <span class="leader-name">${entry.user_name || "Anonymous"}</span>
+        <span class="rank-pill">${userRank}</span>
+        <div class="leader-name-row" style="display: flex; align-items: center; gap: 6px;">
+          ${renderLevelBadge(userEntry.user_level)}
+          <span class="leader-name" style="font-weight: 700;">(You) ${userEntry.user_name}</span>
+          ${renderTitleBadge(userEntry.user_title || "none")}
+        </div>
       </div>
       <span class="leader-val">${displayVal}</span>
     `;
     list.appendChild(li);
-  });
+  }
+
   container.style.display = "block";
 }
 
@@ -1564,7 +1823,7 @@ function handleGiveUp() {
   endQuiz(false);
 }
 
-function endQuiz(win = false) {
+async function endQuiz(win = false) {
   clearInterval(state.timerHandle);
   updateTimer();
 
@@ -1580,8 +1839,14 @@ function endQuiz(win = false) {
 
   const resultMsg = win ? `Quiz complete in ${formatTime(state.elapsedMs)}!` : `Quiz ended. You found ${state.guessed.size}/${state.countries.length}.`;
   setMessage(resultMsg, win);
-  savePB();
-  updateLeaderboard();
+
+  // ENSURE SAVE HAPPENS: Force data sync
+  console.log("QUIZ END: Saving results...");
+  await savePB();
+
+  // Refresh leaderboard with fresh data
+  console.log("QUIZ END: Refreshing leaderboard...");
+  await updateLeaderboard();
 
   // Show Restart option
   quizOverlay.style.display = "flex";

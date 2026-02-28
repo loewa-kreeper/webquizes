@@ -3,6 +3,8 @@ create table public.quiz_results (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
   user_name text, -- Store the display name at the time of score submission
+  user_title text, -- Store the title badge at the time of score submission
+  user_level integer, -- Store the user level at the time of submission
   quiz_id text not null,
   score integer not null,
   total_score integer not null,
@@ -23,9 +25,8 @@ on public.quiz_results for select
 using (true);
 
 -- 2. Users can only insert their own results
-create policy "Users can insert their own results" 
-on public.quiz_results for insert 
-with check (auth.uid() = user_id);
+create policy "Users can insert their own results" on public.quiz_results for insert with check (auth.uid() = user_id);
+create policy "Users can update their own results" on public.quiz_results for update using (auth.uid() = user_id);
 
 -- 3. Users can delete their own results (optional)
 create policy "Users can delete their own results" 

@@ -12,8 +12,21 @@
   <main class="app">
     <section id="home-screen" class="panel active" aria-labelledby="home-title">
       <div class="home-header">
-        <h1 id="home-title">WebQuizes</h1>
-        <p class="subtitle">Quick geography challenge</p>
+        <div class="home-header-main">
+          <h1 id="home-title">WebQuizes</h1>
+          <p class="subtitle">Quick geography challenge</p>
+        </div>
+
+        <div class="user-rank-container header-rank" id="home-rank-display">
+          <div class="level-shield">
+            <span>Level</span>
+            <span id="home-user-level" class="level-number">1</span>
+          </div>
+          <div class="xp-bar-outer">
+            <div id="home-xp-bar-fill" class="xp-bar-inner"></div>
+          </div>
+          <span id="home-xp-info" class="xp-text">0 / 100 XP</span>
+        </div>
       </div>
       <!-- two-column layout: quizzes on left, login on right -->
       <div class="home-body">
@@ -77,8 +90,8 @@
             <button type="submit" class="primary-btn">Sign Up</button>
             <p><a href="#" id="show-login">Already have an account? Log in</a></p>
           </form>
-          <div id="logged-in-menu" style="display:none;">
-            <button id="settings-btn" class="primary-btn">Settings</button>
+          <div id="logged-in-menu" class="logged-in-actions" style="display: none;">
+            <button id="settings-btn" class="settings-trigger" title="Settings">⚙️</button>
             <button id="logout-btn" class="secondary-btn">Logout</button>
           </div>
         </aside>
@@ -89,12 +102,16 @@
             <form id="settings-form">
               <label>Username</label>
               <input type="text" id="settings-username" placeholder="Username" />
+              <label>Badge Title</label>
+              <select id="settings-title" class="settings-select">
+                <option value="none">No Title</option>
+              </select>
               <label>New Password (leave blank to keep current)</label>
               <input type="password" id="settings-new-password" placeholder="New password" />
               <input type="password" id="settings-confirm-password" placeholder="Confirm password" />
               <label>Current Password</label>
-              <input type="password" id="settings-current-password" placeholder="Current password (required)"
-                required />
+              <input type="password" id="settings-current-password"
+                placeholder="Current password (only if changing password)" />
               <button type="submit" class="primary-btn">Save Changes</button>
             </form>
             <button id="close-settings" class="secondary-btn">Close</button>
@@ -105,9 +122,20 @@
 
     <section id="quiz-screen" class="panel" aria-labelledby="quiz-title">
       <header class="quiz-header">
-        <h2 id="quiz-title">Europe Countries Quiz</h2>
+        <div class="quiz-header-left">
+          <h2 id="quiz-title">Europe Countries Quiz</h2>
+          <div class="user-rank-container header-rank">
+            <div class="level-shield">
+              <span>Level</span>
+              <span id="quiz-user-level" class="level-number">1</span>
+            </div>
+            <div class="xp-bar-outer small-bar">
+              <div id="quiz-xp-bar-fill" class="xp-bar-inner"></div>
+            </div>
+          </div>
+        </div>
         <div class="stats">
-          <span id="score">0 / 0</span>
+          <span id="score">0 / 45</span>
           <span id="timer">00:00</span>
           <span id="personal-best-display" class="pb-badge">PB: --</span>
         </div>
