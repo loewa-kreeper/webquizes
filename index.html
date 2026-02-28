@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebQuizes - Europe Countries Map</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <section id="home-screen" class="panel active" aria-labelledby="home-title">
+      <h1 id="home-title">WebQuizes</h1>
+      <p class="subtitle">Quick geography challenge</p>
+      <article class="quiz-card">
+        <h2>Name All European Countries</h2>
+        <p>Type country names. Every correct country on the map turns from yellow to green.</p>
+        <button id="start-europe-quiz-btn" class="primary-btn">Start Europe Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name All US States</h2>
+        <p>Includes Alaska and Hawaii as map insets. Type full state names to turn them green.</p>
+        <button id="start-us-quiz-btn" class="primary-btn">Start US States Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name All African Countries</h2>
+        <p>Africa-only map and country list from the world quiz dataset.</p>
+        <button id="start-africa-quiz-btn" class="primary-btn">Start Africa Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name All Asian Countries</h2>
+        <p>Asia-only map and country list from the world quiz dataset.</p>
+        <button id="start-asia-quiz-btn" class="primary-btn">Start Asia Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name All North American Countries</h2>
+        <p>Includes Central America and Caribbean; uses world dataset.</p>
+        <button id="start-northamerica-quiz-btn" class="primary-btn">Start North America Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name All South American Countries</h2>
+        <p>South America only map and list from world dataset.</p>
+        <button id="start-southamerica-quiz-btn" class="primary-btn">Start South America Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name All Oceanian Countries</h2>
+        <p>Oceania quiz covering Australia, Pacific islands, and New Zealand.</p>
+        <button id="start-oceania-quiz-btn" class="primary-btn">Start Oceania Quiz</button>
+      </article>
+      <article class="quiz-card">
+        <h2>Name 196 Countries of the World</h2>
+        <p>Full world map challenge with 196 accepted countries.</p>
+        <button id="start-world-quiz-btn" class="primary-btn">Start World Quiz</button>
+      </article>
+    </section>
+
+    <section id="quiz-screen" class="panel" aria-labelledby="quiz-title">
+      <header class="quiz-header">
+        <h2 id="quiz-title">Europe Countries Quiz</h2>
+        <div class="stats">
+          <span id="score">0 / 0</span>
+          <span id="timer">00:00</span>
+        </div>
+        <div class="zoom-controls">
+          <button id="zoom-in-btn" class="small-btn" title="Zoom in">+</button>
+          <button id="zoom-out-btn" class="small-btn" title="Zoom out">−</button>
+        </div>
+      </header>
+
+      <form id="guess-form" autocomplete="off">
+        <input id="guess-input" name="guess" type="text" placeholder="Type a country name..." aria-label="Country name" />
+        <button type="submit" class="primary-btn">Submit</button>
+      </form>
+
+      <p id="feedback" class="feedback" aria-live="polite"></p>
+
+      <div id="map-wrap" class="map-wrap">
+        <svg id="map-svg" viewBox="0 0 980 620" role="img" aria-label="Map of Europe"></svg>
+      </div>
+
+      <button id="back-home-btn" class="secondary-btn">Back to Home</button>
+    </section>
+  </main>
+
+  <script src="world-data.js"></script>
+  <script src="us-states-data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

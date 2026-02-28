@@ -1,0 +1,191 @@
+Original prompt: lets make a website for quizes like https://www.jetpunk.com. dont copy everything the idea is the same. first of all we could make a home screen with one quiz. just make a quiz of naming all european countries on a map of europe the countries are yellow at the beggining and the turn green if the coutnry is named
+
+- Created initial static app structure: `index.html`, `styles.css`, `script.js`.
+- Implemented home screen with one quiz card and start button.
+- Implemented Europe map quiz screen with input, score, timer, feedback.
+- Map is loaded from GeoJSON and rendered as SVG paths; default yellow fill, green on correct guess.
+- Added answer normalization and aliases for common country name variations.
+- Added `window.render_game_to_text` and `window.advanceTime(ms)` for automated testing hooks.
+
+TODO / next suggestions:
+- Add tighter accepted-name rules and additional aliases.
+- Add explicit quiz country list if we need to restrict exactly to sovereign states.
+- Add restart button and end-of-quiz summary modal.
+- Switched map data source from remote fetch to bundled local `europe.geojson` to avoid blank map/network issues.
+- Installed project dependencies for validation: `playwright` (local) and Chromium (`npx playwright install chromium`).
+- Ran skill Playwright client successfully against `http://127.0.0.1:5173`; artifacts saved in `output/web-game/`.
+  - Verified screenshot shows visible Europe map in yellow.
+  - Verified `state-2.json` reports `countries_total: 50` and map-ready status.
+  - Verified no console errors (`errors-*.json` absent).
+- Ran additional Playwright interaction test to submit `France`, `Germany`, `Spain`:
+  - Confirmed `.country.guessed` count = 3.
+  - Confirmed screenshot `output/web-game/manual-guesses.png` shows guessed countries in green.
+
+TODO / next suggestions:
+- Refine country list to match exact quiz scope (e.g., include/exclude transcontinental states by product decision).
+- Add explicit quiz completion panel with final time and replay CTA.
+- Add local fallback if `europe.geojson` fails to parse/load.
+- Fixed map loading reliability for direct file-open usage:
+  - Added bundled map script `europe-data.js` (sets `window.EUROPE_GEOJSON`).
+  - Updated `index.html` to load `europe-data.js` before `script.js`.
+  - Updated `startQuiz()` to prefer bundled data and only fall back to `fetch('./europe.geojson')`.
+  - Added explicit error if parsed country count is zero.
+- Validation:
+  - Ran Playwright test with `file:///.../index.html` (no local server).
+  - Confirmed map renders and guesses for `Germany` and `France` are accepted.
+  - Verified screenshot: `output/web-game/file-protocol-test.png` and state shows `countries_guessed: 2`.
+- Updated country aliases to match map dataset naming and common user inputs:
+  - `macedonia`, `north macedonia` -> `the former yugoslav republic of macedonia`
+  - `moldova` -> `republic of moldova`
+  - `vatican`, `vatican city` -> `holy see vatican city`
+  - `lichtenstein` (common misspelling) -> `liechtenstein`
+  - `russia` kept aligned with dataset canonical name
+- Validation:
+  - Ran Playwright file-protocol test with guesses: macedonia, russia, moldova, lichtenstein, vatican
+  - Result: all 5 accepted (`countries_guessed: 5`)
+  - Screenshot: `output/web-game/alias-fixes-test.png`
+- Added automatic submit behavior on input:
+  - New `tryAutoSubmitGuess()` checks normalized input against country lookup and aliases.
+  - If full valid unguessed country is detected, it calls `applyGuess()` and clears the input.
+  - Hooked via `guessInput` `input` event.
+- Validation:
+  - Typed `france` and `germany` without Enter/Submit.
+  - Result: `countries_guessed = 2`, input auto-cleared, feedback updated to `Correct: Germany`.
+  - Screenshot: `output/web-game/auto-submit-test.png`.
+- Fixed fullscreen annoyance while typing:
+  - `f` fullscreen toggle now ignores key presses when `#guess-input` is focused.
+- Aligned quiz to 44-country mode:
+  - Excluded transcontinental/non-target entries for this mode: Armenia, Azerbaijan, Georgia, Israel, Kazakhstan, Russia, Turkey.
+  - Country total now renders as 44.
+- Validation:
+  - Playwright file-protocol check shows `TOTAL=44`.
+  - Typing `france` no longer toggles fullscreen (`FULLSCREEN=false`).
+- Updated inclusion/exclusion behavior per latest country rules:
+  - Russia is guessable again.
+  - Non-Europe countries are still rendered on map but greyed out (`.country.non-europe`), including Cyprus.
+  - Current grey set: Armenia, Azerbaijan, Cyprus, Georgia, Israel, Turkey.
+- Added Kosovo support:
+  - Source GeoJSON has no Kosovo feature, so added a Kosovo map marker (small circle at Kosovo coordinates).
+  - `kosovo` is accepted as a valid answer and turns green when guessed.
+- Validation (Playwright):
+  - `cyprus` is non-guessable and remains grey (`class: country non-europe`).
+  - `russia` guess works and turns green.
+  - `kosovo` guess works and marker turns green.
+  - Screenshot: `output/web-game/russia-kosovo-grey-test.png`.
+- Refactored Europe quiz to use an explicit answer-key list (`QUIZ_CONFIG.guessableCountries`) for predictable behavior and easier reuse for future quizzes.
+- Rendering rule is now list-driven:
+  - In list -> guessable (yellow -> green)
+  - Not in list -> visible but grey (`.non-europe`)
+- Russia fix:
+  - `russia` is in answer-key list and now accepts correctly.
+- Cyprus behavior:
+  - `cyprus` is visible and grey, not guessable.
+- Added map bounds config (`QUIZ_CONFIG.mapBounds`) and widened east bound to improve Russia visibility.
+- Validation:
+  - Playwright check: `Correct: Russia`, Russia class includes `guessed`.
+  - Cyprus class is `country non-europe`.
+  - Screenshot: `output/web-game/russia-list-refactor.png`.
+- Note:
+  - The current GeoJSON source itself has a clipped Europe-focused Russia geometry edge; bounds widening helps framing, but full Russia outline would require a different source map dataset.
+- Switched base map source from Europe-only geometry to world countries:
+  - `index.html` now loads `world-data.js`.
+  - `script.js` now reads `window.WORLD_GEOJSON` with fallback `./world.geojson`.
+- Added explicit Europe viewport from world map (`QUIZ_CONFIG.mapBounds`) so map is zoomed into Europe while preserving correct Russia geometry.
+- Added geometry-in-bounds filtering (`geometryIntersectsBounds`) to render only countries relevant to viewport.
+- Kept strict list-driven quiz logic via `QUIZ_CONFIG.guessableCountries`.
+- Updated canonical names to match world dataset naming (`Czechia`, `North Macedonia`, `Moldova`, `Vatican`).
+- Validation:
+  - `russia` now accepted and highlighted (`country guessed`).
+  - `cyprus` visible but grey (`country non-europe`).
+  - Total guessable countries = 44 in this config.
+  - Screenshot: `output/web-game/world-source-europe-zoom.png`.
+- Fixed Serbia mismatch with world dataset naming:
+  - Dataset canonical is `Republic of Serbia`, so added alias `serbia -> republic of serbia`.
+  - Updated guessable list entry to `republic of serbia`.
+  - Also switched raw-name extraction priority to `ADMIN || NAME || name` for world datasets.
+- Added map click zoom:
+  - Single click on SVG zooms in centered on clicked point.
+  - Double-click resets zoom to full Europe view.
+  - Implemented via dynamic SVG `viewBox` updates.
+- Validation:
+  - Serbia is no longer grey (`class: country`) and guessing `serbia` turns it green.
+  - `viewBox` changes after click and resets after double-click.
+  - Screenshot: `output/web-game/serbia-zoom-fix.png`.
+- Changed click zoom behavior to toggle mode:
+  - 1st click: zoom in.
+  - 2nd click: zoom out to full view.
+  - Repeats on each click.
+- Increased zoom-in strength from previous behavior using `QUIZ_CONFIG.clickZoomFactor = 2.4`.
+- Added `state.isZoomedIn` to track toggle state and reset correctly.
+- Validation:
+  - `viewBox` alternates: full -> zoomed -> full -> zoomed.
+  - Screenshot: `output/web-game/click-toggle-zoom.png`.
+- Added configurable island halo rendering for tiny islands.
+- New config fields in `QUIZ_CONFIG`:
+  - `islandHaloCountries` (currently `malta`)
+  - `islandHaloPaddingX`, `islandHaloPaddingY`, `islandHaloMinRx`, `islandHaloMinRy`
+- New `addIslandHalo(path, canonical)` creates a low-opacity white ellipse around configured island shapes.
+- Halo style added in CSS (`.island-halo`) with semi-transparent white fill/stroke.
+- Validation:
+  - Confirmed Malta halo exists (`MALTA_HALO_COUNT=1`).
+  - Visual check screenshot: `output/web-game/malta-halo.png`.
+- Added second quiz on home screen: US States (alongside Europe).
+- Added bundled US states dataset support:
+  - New files: `us-states.geojson`, `us-states-data.js`.
+  - `index.html` now loads both `world-data.js` and `us-states-data.js`.
+- Refactored `script.js` to multi-quiz architecture (`QUIZZES` config object):
+  - Per-quiz dataset source, bounds, aliases, guessable list, zoom factor, halo countries, and optional coordinate transform.
+  - Europe quiz remains available and working.
+  - US quiz uses exact 50-state answer list (DC/Puerto Rico not guessable).
+- Implemented Alaska/Hawaii inset behavior for US map via coordinate transform:
+  - Alaska scaled+shifted to lower-left inset region.
+  - Hawaii shifted to lower-left inset region.
+- Kept existing features across both quizzes:
+  - Auto-submit on full correct input.
+  - Click toggle zoom in/out; double-click reset.
+  - Non-guessable map regions shown in grey.
+  - Island halo support (Malta in Europe, Hawaii in US config).
+- Validation:
+  - Europe quiz starts and accepts guesses (`france` -> guessed count increments).
+  - US quiz loads with `countries_total=50`.
+  - Alaska and Hawaii both fully inside map frame (`ALASKA_INSIDE=true`, `HAWAII_INSIDE=true`).
+  - Screenshots: `output/web-game/europe-quiz-2card.png`, `output/web-game/us-states-inset-quiz.png`, `output/web-game/us-states-inset-adjusted.png`.
+- Updated US quiz rendering to show a world-country background layer (grey) behind US states.
+- Added US quiz background config in `QUIZZES.us_states.background`:
+  - Source: `WORLD_GEOJSON` / `./world.geojson`
+  - Name keys: `ADMIN`, `NAME`, `name`
+  - Excludes USA country polygon so states remain visible.
+- Implemented background rendering pipeline:
+  - Added raw lon/lat projection helpers (no US-state inset transform).
+  - Added `drawBackgroundMap(...)` and `buildMap(features, backgroundFeatures)`.
+  - `startQuiz` now loads optional background GeoJSON per quiz.
+- Added CSS for background countries (`.background-country`) in `styles.css`.
+- Validation:
+  - US quiz now renders grey neighboring countries with yellow US states overlaid.
+  - Guessing still works (`Texas` accepted).
+  - US total remains 50; Europe quiz still loads correctly.
+  - Screenshot: `output/web-game/us-world-bg.png`.
+- Added a third quiz: `world_196` (home card + start button).
+- Implemented world quiz config in `script.js` with explicit 196-country answer list.
+- World quiz settings:
+  - Full world viewport bounds.
+  - List-driven guessable countries (196 total).
+  - Non-guessable map entities remain grey.
+  - Common aliases added (`usa`, `dr congo`, `czech republic`, `tanzania`, `vatican city`, etc.).
+- Wired new UI button `#start-world-quiz-btn` to `startQuiz("world_196")`.
+- Validation:
+  - `WORLD_TOTAL=196`.
+  - Tested guesses accepted: usa, france, norway, kosovo, taiwan, palestine.
+  - US quiz still loads with total 50; Europe quiz still works.
+  - Screenshot: `output/web-game/world-196-quiz.png`.
+- Updated `world_196` quiz to match the user-provided country/alias set.
+- Country-set change for 196 target alignment:
+  - Removed `Palestine`.
+  - Added `Guinea-Bissau`.
+- Added/expanded world aliases for requested variants/spellings:
+  - examples: `antigua`, `car`, `columbbia`, `congo`, `drc`, `dr`, `timor leste`, `cote d ivoire`, `kirgistan`, `png`, `st kitts`, `st vincent`, `sao tome`, `burma`, `uae`, `uk`, `usa`, etc.
+- Validation:
+  - `WORLD_TOTAL=196` remains correct.
+  - Requested alias inputs accepted in automated run.
+  - `palestine` now correctly rejected for this configured list.
+  - Screenshot: `output/web-game/world-196-user-aliases.png`.
