@@ -294,10 +294,10 @@ const QUIZZES = {
     featureNameKeys: ["name", "ADMIN", "NAME"],
     notFoundLabel: "world quiz",
     mapBounds: {
-      minLon: -180,
-      maxLon: 180,
-      minLat: -58,
-      maxLat: 85
+      minLon: -172,
+      maxLon: 178,
+      minLat: -55,
+      maxLat: 81
     },
     clickZoomFactor: 2.2,
     guessableCountries: [
@@ -445,12 +445,12 @@ const QUIZZES = {
     },
     clickZoomFactor: 2.6,
     guessableCountries: [
-      "Algeria","Angola","Benin","Botswana","Burkina Faso","Burundi","Cabo Verde","Cameroon","Central African Republic",
-      "Chad","Comoros","Democratic Republic of the Congo","Republic of the Congo","Djibouti","Egypt","Equatorial Guinea","Eritrea","Eswatini",
-      "Ethiopia","Gabon","Gambia","Ghana","Guinea","Guinea-Bissau","Ivory Coast","Kenya","Lesotho","Liberia","Libya",
-      "Madagascar","Malawi","Mali","Mauritania","Mauritius","Morocco","Mozambique","Namibia","Niger","Nigeria","Rwanda",
-      "Sao Tome and Principe","Senegal","Seychelles","Sierra Leone","Somalia","South Africa","South Sudan","Sudan","Togo",
-      "Tunisia","United Republic of Tanzania","Uganda","Zambia","Zimbabwe"
+      "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cabo Verde", "Cameroon", "Central African Republic",
+      "Chad", "Comoros", "Democratic Republic of the Congo", "Republic of the Congo", "Djibouti", "Egypt", "Equatorial Guinea", "Eritrea", "Eswatini",
+      "Ethiopia", "Gabon", "Gambia", "Ghana", "Guinea", "Guinea-Bissau", "Ivory Coast", "Kenya", "Lesotho", "Liberia", "Libya",
+      "Madagascar", "Malawi", "Mali", "Mauritania", "Mauritius", "Morocco", "Mozambique", "Namibia", "Niger", "Nigeria", "Rwanda",
+      "Sao Tome and Principe", "Senegal", "Seychelles", "Sierra Leone", "Somalia", "South Africa", "South Sudan", "Sudan", "Togo",
+      "Tunisia", "United Republic of Tanzania", "Uganda", "Zambia", "Zimbabwe"
     ],
     aliases: {
       "congo": "republic of the congo",
@@ -462,7 +462,7 @@ const QUIZZES = {
     },
     excludedNames: [],
     islandHaloCountries: [
-      "madagascar","comoros","mauritius","seychelles","sao tome and principe","cabo verde"
+      "madagascar", "comoros", "mauritius", "seychelles", "sao tome and principe", "cabo verde"
     ],
     coordinateTransform: null,
     hideNonGuessableFeatures: false,
@@ -488,11 +488,11 @@ const QUIZZES = {
     },
     clickZoomFactor: 2.4,
     guessableCountries: [
-      "Afghanistan","Armenia","Azerbaijan","Bahrain","Bangladesh","Bhutan","Brunei","Cambodia","China","Cyprus","Georgia",
-      "India","Indonesia","Iran","Iraq","Israel","Japan","Jordan","Kazakhstan","Kuwait","Kyrgyzstan","Laos","Lebanon",
-      "Malaysia","Maldives","Mongolia","Myanmar","Nepal","North Korea","Oman","Pakistan","Philippines","Qatar","Saudi Arabia",
-      "Singapore","South Korea","Sri Lanka","Syria","Taiwan","Tajikistan","Thailand","East Timor","Turkey","Turkmenistan",
-      "United Arab Emirates","Uzbekistan","Vietnam","Yemen"
+      "Afghanistan", "Armenia", "Azerbaijan", "Bahrain", "Bangladesh", "Bhutan", "Brunei", "Cambodia", "China", "Cyprus", "Georgia",
+      "India", "Indonesia", "Iran", "Iraq", "Israel", "Japan", "Jordan", "Kazakhstan", "Kuwait", "Kyrgyzstan", "Laos", "Lebanon",
+      "Malaysia", "Maldives", "Mongolia", "Myanmar", "Nepal", "North Korea", "Oman", "Pakistan", "Philippines", "Qatar", "Saudi Arabia",
+      "Singapore", "South Korea", "Sri Lanka", "Syria", "Taiwan", "Tajikistan", "Thailand", "East Timor", "Turkey", "Turkmenistan",
+      "United Arab Emirates", "Uzbekistan", "Vietnam", "Yemen"
     ],
     aliases: {},
     excludedNames: [],
@@ -521,9 +521,9 @@ const QUIZZES = {
     },
     clickZoomFactor: 2.4,
     guessableCountries: [
-      "Antigua and Barbuda","Bahamas","Barbados","Belize","Canada","Costa Rica","Cuba","Dominica","Dominican Republic",
-      "El Salvador","Grenada","Guatemala","Haiti","Honduras","Jamaica","Mexico","Nicaragua","Panama",
-      "Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Trinidad and Tobago","United States of America"
+      "Antigua and Barbuda", "Bahamas", "Barbados", "Belize", "Canada", "Costa Rica", "Cuba", "Dominica", "Dominican Republic",
+      "El Salvador", "Grenada", "Guatemala", "Haiti", "Honduras", "Jamaica", "Mexico", "Nicaragua", "Panama",
+      "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Trinidad and Tobago", "United States of America"
     ],
     aliases: {},
     excludedNames: [],
@@ -552,7 +552,7 @@ const QUIZZES = {
     },
     clickZoomFactor: 2.4,
     guessableCountries: [
-      "Argentina","Bolivia","Brazil","Chile","Colombia","Ecuador","Guyana","Paraguay","Peru","Suriname","Uruguay","Venezuela"
+      "Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"
     ],
     aliases: {},
     excludedNames: [],
@@ -581,8 +581,8 @@ const QUIZZES = {
     },
     clickZoomFactor: 2.4,
     guessableCountries: [
-      "Australia","Fiji","Kiribati","Federated States of Micronesia","Marshall Islands","Nauru","New Zealand",
-      "Palau","Papua New Guinea","Samoa","Solomon Islands","Tonga","Tuvalu","Vanuatu"
+      "Australia", "Fiji", "Kiribati", "Federated States of Micronesia", "Marshall Islands", "Nauru", "New Zealand",
+      "Palau", "Papua New Guinea", "Samoa", "Solomon Islands", "Tonga", "Tuvalu", "Vanuatu"
     ],
     aliases: { "micronesia": "federated states of micronesia", "fsm": "federated states of micronesia" },
     excludedNames: [],
@@ -1230,9 +1230,9 @@ function buildMap(features, backgroundFeatures = []) {
   const bounds = state.activeQuiz.mapBounds;
   const spanLon = bounds.maxLon - bounds.minLon;
   const spanLat = bounds.maxLat - bounds.minLat;
-  const height = spanLon > 0 ? width * (spanLat / spanLon) : MAP_HEIGHT;
+  const height = spanLon > 0 ? (width * (spanLat / spanLon)) * 1.45 : MAP_HEIGHT;
   MAP_HEIGHT = height;
-  
+
   // Update SVG viewBox to match new height
   mapSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
