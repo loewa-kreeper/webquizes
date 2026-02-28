@@ -541,8 +541,96 @@ button {
   align-items: center;
 }
 
-.small-btn {
-  padding: 4px 8px;
-  font-size: 0.9rem;
-  line-height: 1;
+.leaderboard-podium {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.leaderboard-podium h3 {
+  margin-top: 0;
+  text-align: center;
+  font-size: 1.25rem;
+  color: #5d4e33;
+}
+
+#leaderboard-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leader-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #ebe0c5;
+}
+
+.leader-rank-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rank-pill {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  font-weight: 800;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+/* Podium Colors */
+.rank-1 .rank-pill {
+  background: #ffd700;
+  color: #7a5d00;
+  box-shadow: 0 0 8px #ffd700;
+}
+
+.rank-2 .rank-pill {
+  background: #c0c0c0;
+  color: #4b4b4b;
+}
+
+.rank-3 .rank-pill {
+  background: #cd7f32;
+  color: #5a2e00;
+}
+
+.rank-4 .rank-pill {
+  background: #4ecdc4;
+}
+
+.rank-5 .rank-pill {
+  background: #ff6b6b;
+}
+
+.leader-val {
+  font-family: monospace;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.leader-name {
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .leader-item {
+    font-size: 0.9rem;
+    padding: 6px 12px;
+  }
 }

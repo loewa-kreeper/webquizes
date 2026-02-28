@@ -58,6 +58,19 @@ async function initializeAuth() {
     if (session && session.user) setLoggedIn(session.user);
     else setLoggedOut();
   });
+
+  // Inject a Test Quiz button for the user (temporary for testing)
+  const homeContent = document.querySelector('.home-content');
+  if (homeContent) {
+    const testBtn = document.createElement('button');
+    testBtn.id = "start-test-quiz-btn";
+    testBtn.className = "primary-btn";
+    testBtn.style.marginTop = "12px";
+    testBtn.style.background = "#6366f1";
+    testBtn.textContent = "Start Test Quiz (1 Answer)";
+    testBtn.onclick = () => startQuiz("test");
+    homeContent.appendChild(testBtn);
+  }
 }
 
 async function handleLogin(e) {
@@ -218,6 +231,23 @@ async function handleSettingsSubmit(e) {
 document.addEventListener('DOMContentLoaded', initializeAuth);
 
 const QUIZZES = {
+  test: {
+    id: "test",
+    title: "Test Quiz (1 Country)",
+    dataWindowKey: "WORLD_GEOJSON",
+    dataUrl: "./world.geojson",
+    featureNameKeys: ["name", "ADMIN", "NAME"],
+    notFoundLabel: "test quiz",
+    mapBounds: {
+      minLon: -172,
+      maxLon: 178,
+      minLat: -55,
+      maxLat: 81
+    },
+    clickZoomFactor: 2.2,
+    guessableCountries: ["Greenland"],
+    aliases: { "Test": "Greenland", "g": "Greenland" }
+  },
   europe: {
     id: "europe",
     title: "Europe Countries Quiz",
@@ -845,11 +875,18 @@ async function savePB() {
 
   // Always save to the new quiz_results TABLE for the leaderboard
   try {
+    const meta = currentUser.user_metadata || {};
+    // Priority: display_name -> full_name -> username -> email fallback
+    const dName = meta.display_name || meta.full_name || meta.username || currentUser.email;
+
+    console.log("Saving result to DB for user:", dName);
+
     const { error: insertError } = await supabaseClient
       .from('quiz_results')
       .insert([
         {
           user_id: currentUser.id,
+          user_name: dName,
           quiz_id: state.activeQuizId,
           score: currentScore,
           total_score: total,
@@ -880,6 +917,65 @@ async function savePB() {
       console.error("Supabase metadata update error:", e);
     }
   }
+}
+
+async function updateLeaderboard() {
+  if (!state.activeQuizId) return;
+  const topScores = await fetchLeaderboard(state.activeQuizId);
+  renderLeaderboard(topScores);
+}
+
+async function fetchLeaderboard(quizId) {
+  try {
+    const { data, error } = await supabaseClient
+      .from('quiz_results')
+      .select('user_name, score, total_score, time_ms')
+      .eq('quiz_id', quizId)
+      .order('score', { ascending: false })
+      .order('time_ms', { ascending: true })
+      .limit(5);
+
+    if (error) {
+      console.error("Error fetching leaderboard:", error.message);
+      return [];
+    }
+    return data;
+  } catch (e) {
+    console.error("Failed to fetch leaderboard:", e);
+    return [];
+  }
+}
+
+function renderLeaderboard(scores) {
+  const container = document.getElementById("leaderboard-container");
+  const list = document.getElementById("leaderboard-list");
+  if (!container || !list) return;
+
+  list.innerHTML = "";
+  if (!scores || scores.length === 0) {
+    list.innerHTML = `<li class="leader-empty">No results found yet. Be the first!</li>`;
+    return;
+  }
+
+  scores.forEach((entry, idx) => {
+    const li = document.createElement("li");
+    li.className = `leader-item rank-${idx + 1}`;
+
+    // display time if fully complete, otherwise score
+    const displayVal = (entry.score === entry.total_score && entry.total_score > 0)
+      ? formatTime(entry.time_ms)
+      : `${entry.score}/${entry.total_score}`;
+
+    li.innerHTML = `
+      <div class="leader-rank-info">
+        <span class="rank-pill">${idx + 1}</span>
+        <span class="leader-name">${entry.user_name || "Anonymous"}</span>
+      </div>
+      <span class="leader-val">${displayVal}</span>
+    `;
+    list.appendChild(li);
+  });
+  container.style.display = "block";
 }
 
 function normalizeName(name) {
@@ -1485,6 +1581,7 @@ function endQuiz(win = false) {
   const resultMsg = win ? `Quiz complete in ${formatTime(state.elapsedMs)}!` : `Quiz ended. You found ${state.guessed.size}/${state.countries.length}.`;
   setMessage(resultMsg, win);
   savePB();
+  updateLeaderboard();
 
   // Show Restart option
   quizOverlay.style.display = "flex";
@@ -1636,6 +1733,7 @@ async function startQuiz(quizId) {
     const records = currentUser?.user_metadata?.quiz_records || {};
     state.personalBest = records[quizId] || { score: 0, timeMs: 0 };
     updatePBDisplay();
+    updateLeaderboard();
 
     // Show start button
     quizOverlay.style.display = "flex";

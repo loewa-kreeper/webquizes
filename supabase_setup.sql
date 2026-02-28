@@ -2,6 +2,7 @@
 create table public.quiz_results (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
+  user_name text, -- Store the display name at the time of score submission
   quiz_id text not null,
   score integer not null,
   total_score integer not null,
