@@ -40,6 +40,7 @@ let loginForm, loginStatus, logoutBtn;
 let signupForm, showSignupLink, showLoginLink;
 let settingsBtn, closeSettingsBtn, settingsModal, settingsForm;
 let loggedInMenu, resetLevelBtn;
+let startEuropeQuizBtn, startEuropeFlagsBtn, startUsQuizBtn, startAfricaQuizBtn, startAfricaFlagsBtn, startAsiaQuizBtn, startAsiaFlagsBtn, startNorthAmericaQuizBtn, startNorthAmericaFlagsBtn, startSouthAmericaQuizBtn, startSouthAmericaFlagsBtn, startOceaniaQuizBtn, startOceaniaFlagsBtn, startWorldQuizBtn, startWorldFlagsBtn, backHomeBtn, giveUpBtn, scoreEl, timerEl, quizTitleEl, quizOverlay, startGameBtn, guessInput, guessForm, mapSvg, feedback, zoomInBtn, zoomOutBtn, pbDisplayEl;
 let levelUpModal, levelUpCloseBtn, levelUpLevelText, levelUpUnlockSection, levelUpTitleContainer;
 let customDialogModal, dialogTitle, dialogMessage, dialogOkBtn, dialogCancelBtn, dialogResolve;
 let currentUser = null;
@@ -130,8 +131,52 @@ async function initializeAuth() {
     else setLoggedOut();
   });
 
-  // Always show rank for guests initially
-  updateRankDisplay();
+  // Quiz UI references
+  startEuropeQuizBtn = document.getElementById('start-europe-quiz-btn');
+  startEuropeFlagsBtn = document.getElementById('start-europe-flags-btn');
+  startUsQuizBtn = document.getElementById('start-us-quiz-btn');
+  startAfricaQuizBtn = document.getElementById('start-africa-quiz-btn');
+  startAfricaFlagsBtn = document.getElementById('start-africa-flags-btn');
+  startAsiaQuizBtn = document.getElementById('start-asia-quiz-btn');
+  startAsiaFlagsBtn = document.getElementById('start-asia-flags-btn');
+  startNorthAmericaQuizBtn = document.getElementById('start-northamerica-quiz-btn');
+  startNorthAmericaFlagsBtn = document.getElementById('start-northamerica-flags-btn');
+  startSouthAmericaQuizBtn = document.getElementById('start-southamerica-quiz-btn');
+  startSouthAmericaFlagsBtn = document.getElementById('start-southamerica-flags-btn');
+  startOceaniaQuizBtn = document.getElementById('start-oceania-quiz-btn');
+  startOceaniaFlagsBtn = document.getElementById('start-oceania-flags-btn');
+  startWorldQuizBtn = document.getElementById('start-world-quiz-btn');
+  startWorldFlagsBtn = document.getElementById('start-world-flags-btn');
+
+  backHomeBtn = document.getElementById('back-home-btn');
+  giveUpBtn = document.getElementById('give-up-btn');
+  scoreEl = document.getElementById('score');
+  timerEl = document.getElementById('timer');
+  quizTitleEl = document.getElementById('quiz-title');
+  quizOverlay = document.getElementById('quiz-overlay');
+  startGameBtn = document.getElementById('start-game-btn');
+  guessInput = document.getElementById('guess-input');
+  guessForm = document.getElementById('guess-form');
+  mapSvg = document.getElementById('map-svg');
+
+  if (startEuropeQuizBtn) startEuropeQuizBtn.addEventListener('click', () => startQuiz('europe'));
+  if (startEuropeFlagsBtn) startEuropeFlagsBtn.addEventListener('click', () => startQuiz('europe_flags'));
+  if (startUsQuizBtn) startUsQuizBtn.addEventListener('click', () => startQuiz('us_states'));
+  if (startAfricaQuizBtn) startAfricaQuizBtn.addEventListener('click', () => startQuiz('africa'));
+  if (startAfricaFlagsBtn) startAfricaFlagsBtn.addEventListener('click', () => startQuiz('africa_flags'));
+  if (startAsiaQuizBtn) startAsiaQuizBtn.addEventListener('click', () => startQuiz('asia'));
+  if (startAsiaFlagsBtn) startAsiaFlagsBtn.addEventListener('click', () => startQuiz('asia_flags'));
+  if (startNorthAmericaQuizBtn) startNorthAmericaQuizBtn.addEventListener('click', () => startQuiz('north_america'));
+  if (startNorthAmericaFlagsBtn) startNorthAmericaFlagsBtn.addEventListener('click', () => startQuiz('north_america_flags'));
+  if (startSouthAmericaQuizBtn) startSouthAmericaQuizBtn.addEventListener('click', () => startQuiz('south_america'));
+  if (startSouthAmericaFlagsBtn) startSouthAmericaFlagsBtn.addEventListener('click', () => startQuiz('south_america_flags'));
+  if (startOceaniaQuizBtn) startOceaniaQuizBtn.addEventListener('click', () => startQuiz('oceania'));
+  if (startOceaniaFlagsBtn) startOceaniaFlagsBtn.addEventListener('click', () => startQuiz('oceania_flags'));
+  if (startWorldQuizBtn) startWorldQuizBtn.addEventListener('click', () => startQuiz('world_196'));
+  if (startWorldFlagsBtn) startWorldFlagsBtn.addEventListener('click', () => startQuiz('world_flags'));
+  if (backHomeBtn) backHomeBtn.addEventListener('click', stopQuiz);
+  if (giveUpBtn) giveUpBtn.addEventListener('click', handleGiveUp);
+  if (startGameBtn) startGameBtn.addEventListener('click', beginQuiz);
 
   // Inject a Test Quiz button for the user (temporary for testing)
   const homeContent = document.querySelector('.home-content');
@@ -531,6 +576,153 @@ const QUIZZES = {
     ],
     islandHaloCountries: ["malta"],
     coordinateTransform: null
+  },
+  europe_flags: {
+    id: "europe_flags",
+    type: "flags",
+    title: "European Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Albania", code: "al" }, { name: "Andorra", code: "ad" }, { name: "Austria", code: "at" },
+      { name: "Belarus", code: "by" }, { name: "Belgium", code: "be" }, { name: "Bosnia and Herzegovina", code: "ba" },
+      { name: "Bulgaria", code: "bg" }, { name: "Croatia", code: "hr" }, { name: "Czechia", code: "cz" },
+      { name: "Denmark", code: "dk" }, { name: "Estonia", code: "ee" }, { name: "Finland", code: "fi" },
+      { name: "France", code: "fr" }, { name: "Germany", code: "de" }, { name: "Greece", code: "gr" },
+      { name: "Hungary", code: "hu" }, { name: "Iceland", code: "is" }, { name: "Ireland", code: "ie" },
+      { name: "Italy", code: "it" }, { name: "Latvia", code: "lv" }, { name: "Liechtenstein", code: "li" },
+      { name: "Lithuania", code: "lt" }, { name: "Luxembourg", code: "lu" }, { name: "Malta", code: "mt" },
+      { name: "Moldova", code: "md" }, { name: "Monaco", code: "mc" }, { name: "Montenegro", code: "me" },
+      { name: "Netherlands", code: "nl" }, { name: "North Macedonia", code: "mk" }, { name: "Norway", code: "no" },
+      { name: "Poland", code: "pl" }, { name: "Portugal", code: "pt" }, { name: "Romania", code: "ro" },
+      { name: "Russia", code: "ru" }, { name: "San Marino", code: "sm" }, { name: "Serbia", code: "rs" },
+      { name: "Slovakia", code: "sk" }, { name: "Slovenia", code: "si" }, { name: "Spain", code: "es" },
+      { name: "Sweden", code: "se" }, { name: "Switzerland", code: "ch" }, { name: "Ukraine", code: "ua" },
+      { name: "United Kingdom", code: "gb" }, { name: "Vatican City", code: "va" }
+    ],
+    aliases: {
+      "uk": "United Kingdom", "britain": "United Kingdom", "england": "United Kingdom",
+      "bosnia": "Bosnia and Herzegovina", "macedonia": "North Macedonia", "vatican": "Vatican City",
+      "czech": "Czechia", "czech republic": "Czechia"
+    }
+  },
+  africa_flags: {
+    id: "africa_flags",
+    type: "flags",
+    title: "African Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Algeria", code: "dz" }, { name: "Angola", code: "ao" }, { name: "Benin", code: "bj" },
+      { name: "Botswana", code: "bw" }, { name: "Burkina Faso", code: "bf" }, { name: "Burundi", code: "bi" },
+      { name: "Cabo Verde", code: "cv" }, { name: "Cameroon", code: "cm" }, { name: "Central African Republic", code: "cf" },
+      { name: "Chad", code: "td" }, { name: "Comoros", code: "km" }, { name: "Democratic Republic of the Congo", code: "cd" },
+      { name: "Republic of the Congo", code: "cg" }, { name: "Djibouti", code: "dj" }, { name: "Egypt", code: "eg" },
+      { name: "Equatorial Guinea", code: "gq" }, { name: "Eritrea", code: "er" }, { name: "Eswatini", code: "sz" },
+      { name: "Ethiopia", code: "et" }, { name: "Gabon", code: "ga" }, { name: "Gambia", code: "gm" },
+      { name: "Ghana", code: "gh" }, { name: "Guinea", code: "gn" }, { name: "Guinea-Bissau", code: "gw" },
+      { name: "Ivory Coast", code: "ci" }, { name: "Kenya", code: "ke" }, { name: "Lesotho", code: "ls" },
+      { name: "Liberia", code: "lr" }, { name: "Libya", code: "ly" }, { name: "Madagascar", code: "mg" },
+      { name: "Malawi", code: "mw" }, { name: "Mali", code: "ml" }, { name: "Mauritania", code: "mr" },
+      { name: "Mauritius", code: "mu" }, { name: "Morocco", code: "ma" }, { name: "Mozambique", code: "mz" },
+      { name: "Namibia", code: "na" }, { name: "Niger", code: "ne" }, { name: "Nigeria", code: "ng" },
+      { name: "Rwanda", code: "rw" }, { name: "Sao Tome and Principe", code: "st" }, { name: "Senegal", code: "sn" },
+      { name: "Seychelles", code: "sc" }, { name: "Sierra Leone", code: "sl" }, { name: "Somalia", code: "so" },
+      { name: "South Africa", code: "za" }, { name: "South Sudan", code: "ss" }, { name: "Sudan", code: "sd" },
+      { name: "Togo", code: "tg" }, { name: "Tunisia", code: "tn" }, { name: "United Republic of Tanzania", code: "tz" },
+      { name: "Uganda", code: "ug" }, { name: "Zambia", code: "zm" }, { name: "Zimbabwe", code: "zw" }
+    ],
+    aliases: {
+      "congo": "republic of the congo", "drc": "democratic republic of the congo",
+      "swaziland": "eswatini", "tanzania": "united republic of tanzania", "ivory coast": "ivory coast"
+    }
+  },
+  asia_flags: {
+    id: "asia_flags",
+    type: "flags",
+    title: "Asian Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Afghanistan", code: "af" }, { name: "Armenia", code: "am" }, { name: "Azerbaijan", code: "az" },
+      { name: "Bahrain", code: "bh" }, { name: "Bangladesh", code: "bd" }, { name: "Bhutan", code: "bt" },
+      { name: "Brunei", code: "bn" }, { name: "Cambodia", code: "kh" }, { name: "China", code: "cn" },
+      { name: "Cyprus", code: "cy" }, { name: "Georgia", code: "ge" }, { name: "India", code: "in" },
+      { name: "Indonesia", code: "id" }, { name: "Iran", code: "ir" }, { name: "Iraq", code: "iq" },
+      { name: "Israel", code: "il" }, { name: "Japan", code: "jp" }, { name: "Jordan", code: "jo" },
+      { name: "Kazakhstan", code: "kz" }, { name: "Kuwait", code: "kw" }, { name: "Kyrgyzstan", code: "kg" },
+      { name: "Laos", code: "la" }, { name: "Lebanon", code: "lb" }, { name: "Malaysia", code: "my" },
+      { name: "Maldives", code: "mv" }, { name: "Mongolia", code: "mn" }, { name: "Myanmar", code: "mm" },
+      { name: "Nepal", code: "np" }, { name: "North Korea", code: "kp" }, { name: "Oman", code: "om" },
+      { name: "Pakistan", code: "pk" }, { name: "Philippines", code: "ph" }, { name: "Qatar", code: "qa" },
+      { name: "Saudi Arabia", code: "sa" }, { name: "Singapore", code: "sg" }, { name: "South Korea", code: "kr" },
+      { name: "Sri Lanka", code: "lk" }, { name: "Syria", code: "sy" }, { name: "Taiwan", code: "tw" },
+      { name: "Tajikistan", code: "tj" }, { name: "Thailand", code: "th" }, { name: "East Timor", code: "tl" },
+      { name: "Turkey", code: "tr" }, { name: "Turkmenistan", code: "tm" }, { name: "United Arab Emirates", code: "ae" },
+      { name: "Uzbekistan", code: "uz" }, { name: "Vietnam", code: "vn" }, { name: "Yemen", code: "ye" }
+    ],
+    aliases: {
+      "uae": "united arab emirates", "timor leste": "east timor", "burma": "myanmar"
+    }
+  },
+  north_america_flags: {
+    id: "north_america_flags",
+    type: "flags",
+    title: "North American Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Antigua and Barbuda", code: "ag" }, { name: "Bahamas", code: "bs" }, { name: "Barbados", code: "bb" },
+      { name: "Belize", code: "bz" }, { name: "Canada", code: "ca" }, { name: "Costa Rica", code: "cr" },
+      { name: "Cuba", code: "cu" }, { name: "Dominica", code: "dm" }, { name: "Dominican Republic", code: "do" },
+      { name: "El Salvador", code: "sv" }, { name: "Grenada", code: "gd" }, { name: "Guatemala", code: "gt" },
+      { name: "Haiti", code: "ht" }, { name: "Honduras", code: "hn" }, { name: "Jamaica", code: "jm" },
+      { name: "Mexico", code: "mx" }, { name: "Nicaragua", code: "ni" }, { name: "Panama", code: "pa" },
+      { name: "Saint Kitts and Nevis", code: "kn" }, { name: "Saint Lucia", code: "lc" },
+      { name: "Saint Vincent and the Grenadines", code: "vc" }, { name: "Trinidad and Tobago", code: "tt" },
+      { name: "United States of America", code: "us" }
+    ],
+    aliases: {
+      "usa": "united states of america", "us": "united states of america", "trinidad": "trinidad and tobago"
+    }
+  },
+  south_america_flags: {
+    id: "south_america_flags",
+    type: "flags",
+    title: "South American Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Argentina", code: "ar" }, { name: "Bolivia", code: "bo" }, { name: "Brazil", code: "br" },
+      { name: "Chile", code: "cl" }, { name: "Colombia", code: "co" }, { name: "Ecuador", code: "ec" },
+      { name: "Guyana", code: "gy" }, { name: "Paraguay", code: "py" }, { name: "Peru", code: "pe" },
+      { name: "Suriname", code: "sr" }, { name: "Uruguay", code: "uy" }, { name: "Venezuela", code: "ve" }
+    ],
+    aliases: {}
+  },
+  oceania_flags: {
+    id: "oceania_flags",
+    type: "flags",
+    title: "Oceanian Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Australia", code: "au" }, { name: "Fiji", code: "fj" }, { name: "Kiribati", code: "ki" },
+      { name: "Federated States of Micronesia", code: "fm" }, { name: "Marshall Islands", code: "mh" },
+      { name: "Nauru", code: "nr" }, { name: "New Zealand", code: "nz" }, { name: "Palau", code: "pw" },
+      { name: "Papua New Guinea", code: "pg" }, { name: "Samoa", code: "ws" }, { name: "Solomon Islands", code: "sb" },
+      { name: "Tonga", code: "to" }, { name: "Tuvalu", code: "tv" }, { name: "Vanuatu", code: "vu" }
+    ],
+    aliases: {
+      "micronesia": "federated states of micronesia", "png": "papua new guinea"
+    }
+  },
+  world_flags: {
+    id: "world_flags",
+    type: "flags",
+    title: "196 World Flags Quiz",
+    notFoundLabel: "flag list",
+    guessableCountries: [
+      { name: "Afghanistan", code: "af" }, { name: "Albania", code: "al" }, { name: "Algeria", code: "dz" }, { name: "Andorra", code: "ad" }, { name: "Angola", code: "ao" }, { name: "Antigua and Barbuda", code: "ag" }, { name: "Argentina", code: "ar" }, { name: "Armenia", code: "am" }, { name: "Australia", code: "au" }, { name: "Austria", code: "at" }, { name: "Azerbaijan", code: "az" }, { name: "Bahamas", code: "bs" }, { name: "Bahrain", code: "bh" }, { name: "Bangladesh", code: "bd" }, { name: "Barbados", code: "bb" }, { name: "Belarus", code: "by" }, { name: "Belgium", code: "be" }, { name: "Belize", code: "bz" }, { name: "Benin", code: "bj" }, { name: "Bhutan", code: "bt" }, { name: "Bolivia", code: "bo" }, { name: "Bosnia and Herzegovina", code: "ba" }, { name: "Botswana", code: "bw" }, { name: "Brazil", code: "br" }, { name: "Brunei", code: "bn" }, { name: "Bulgaria", code: "bg" }, { name: "Burkina Faso", code: "bf" }, { name: "Burundi", code: "bi" }, { name: "Cambodia", code: "kh" }, { name: "Cameroon", code: "cm" }, { name: "Canada", code: "ca" }, { name: "Cabo Verde", code: "cv" }, { name: "Central African Republic", code: "cf" }, { name: "Chad", code: "td" }, { name: "Chile", code: "cl" }, { name: "China", code: "cn" }, { name: "Colombia", code: "co" }, { name: "Comoros", code: "km" }, { name: "Democratic Republic of the Congo", code: "cd" }, { name: "Republic of the Congo", code: "cg" }, { name: "Costa Rica", code: "cr" }, { name: "Ivory Coast", code: "ci" }, { name: "Croatia", code: "hr" }, { name: "Cuba", code: "cu" }, { name: "Cyprus", code: "cy" }, { name: "Czechia", code: "cz" }, { name: "Denmark", code: "dk" }, { name: "Djibouti", code: "dj" }, { name: "Dominica", code: "dm" }, { name: "Dominican Republic", code: "do" }, { name: "Ecuador", code: "ec" }, { name: "Egypt", code: "eg" }, { name: "El Salvador", code: "sv" }, { name: "Equatorial Guinea", code: "gq" }, { name: "Eritrea", code: "er" }, { name: "Estonia", code: "ee" }, { name: "Eswatini", code: "sz" }, { name: "Ethiopia", code: "et" }, { name: "Fiji", code: "fj" }, { name: "Finland", code: "fi" }, { name: "France", code: "fr" }, { name: "Gabon", code: "ga" }, { name: "Gambia", code: "gm" }, { name: "Georgia", code: "ge" }, { name: "Germany", code: "de" }, { name: "Ghana", code: "gh" }, { name: "Greece", code: "gr" }, { name: "Grenada", code: "gd" }, { name: "Guatemala", code: "gt" }, { name: "Guinea", code: "gn" }, { name: "Guinea-Bissau", code: "gw" }, { name: "Guyana", code: "gy" }, { name: "Haiti", code: "ht" }, { name: "Honduras", code: "hn" }, { name: "Hungary", code: "hu" }, { name: "Iceland", code: "is" }, { name: "India", code: "in" }, { name: "Indonesia", code: "id" }, { name: "Iran", code: "ir" }, { name: "Iraq", code: "iq" }, { name: "Ireland", code: "ie" }, { name: "Israel", code: "il" }, { name: "Italy", code: "it" }, { name: "Jamaica", code: "jm" }, { name: "Japan", code: "jp" }, { name: "Jordan", code: "jo" }, { name: "Kazakhstan", code: "kz" }, { name: "Kenya", code: "ke" }, { name: "Kiribati", code: "ki" }, { name: "Kuwait", code: "kw" }, { name: "Kyrgyzstan", code: "kg" }, { name: "Laos", code: "la" }, { name: "Latvia", code: "lv" }, { name: "Lebanon", code: "lb" }, { name: "Lesotho", code: "ls" }, { name: "Liberia", code: "lr" }, { name: "Libya", code: "ly" }, { name: "Liechtenstein", code: "li" }, { name: "Lithuania", code: "lt" }, { name: "Luxembourg", code: "lu" }, { name: "Madagascar", code: "mg" }, { name: "Malawi", code: "mw" }, { name: "Malaysia", code: "my" }, { name: "Maldives", code: "mv" }, { name: "Mali", code: "ml" }, { name: "Malta", code: "mt" }, { name: "Marshall Islands", code: "mh" }, { name: "Mauritania", code: "mr" }, { name: "Mauritius", code: "mu" }, { name: "Mexico", code: "mx" }, { name: "Federated States of Micronesia", code: "fm" }, { name: "Moldova", code: "md" }, { name: "Monaco", code: "mc" }, { name: "Mongolia", code: "mn" }, { name: "Montenegro", code: "me" }, { name: "Morocco", code: "ma" }, { name: "Mozambique", code: "mz" }, { name: "Myanmar", code: "mm" }, { name: "Namibia", code: "na" }, { name: "Nauru", code: "nr" }, { name: "Nepal", code: "np" }, { name: "Netherlands", code: "nl" }, { name: "New Zealand", code: "nz" }, { name: "Nicaragua", code: "ni" }, { name: "Niger", code: "ne" }, { name: "Nigeria", code: "ng" }, { name: "North Korea", code: "kp" }, { name: "North Macedonia", code: "mk" }, { name: "Norway", code: "no" }, { name: "Oman", code: "om" }, { name: "Pakistan", code: "pk" }, { name: "Palau", code: "pw" }, { name: "Panama", code: "pa" }, { name: "Papua New Guinea", code: "pg" }, { name: "Paraguay", code: "py" }, { name: "Peru", code: "pe" }, { name: "Philippines", code: "ph" }, { name: "Poland", code: "pl" }, { name: "Portugal", code: "pt" }, { name: "Qatar", code: "qa" }, { name: "Romania", code: "ro" }, { name: "Russia", code: "ru" }, { name: "Rwanda", code: "rw" }, { name: "Saint Kitts and Nevis", code: "kn" }, { name: "Saint Lucia", code: "lc" }, { name: "Saint Vincent and the Grenadines", code: "vc" }, { name: "Samoa", code: "ws" }, { name: "San Marino", code: "sm" }, { name: "Sao Tome and Principe", code: "st" }, { name: "Saudi Arabia", code: "sa" }, { name: "Senegal", code: "sn" }, { name: "Serbia", code: "rs" }, { name: "Seychelles", code: "sc" }, { name: "Sierra Leone", code: "sl" }, { name: "Singapore", code: "sg" }, { name: "Slovakia", code: "sk" }, { name: "Slovenia", code: "si" }, { name: "Solomon Islands", code: "sb" }, { name: "Somalia", code: "so" }, { name: "South Africa", code: "za" }, { name: "South Korea", code: "kr" }, { name: "South Sudan", code: "ss" }, { name: "Spain", code: "es" }, { name: "Sri Lanka", code: "lk" }, { name: "Sudan", code: "sd" }, { name: "Suriname", code: "sr" }, { name: "Sweden", code: "se" }, { name: "Switzerland", code: "ch" }, { name: "Syria", code: "sy" }, { name: "Taiwan", code: "tw" }, { name: "Tajikistan", code: "tj" }, { name: "United Republic of Tanzania", code: "tz" }, { name: "Thailand", code: "th" }, { name: "East Timor", code: "tl" }, { name: "Togo", code: "tg" }, { name: "Tonga", code: "to" }, { name: "Trinidad and Tobago", code: "tt" }, { name: "Tunisia", code: "tn" }, { name: "Turkey", code: "tr" }, { name: "Turkmenistan", code: "tm" }, { name: "Tuvalu", code: "tv" }, { name: "Uganda", code: "ug" }, { name: "Ukraine", code: "ua" }, { name: "United Arab Emirates", code: "ae" }, { name: "United Kingdom", code: "gb" }, { name: "United States of America", code: "us" }, { name: "Uruguay", code: "uy" }, { name: "Uzbekistan", code: "uz" }, { name: "Vanuatu", code: "vu" }, { name: "Vatican City", code: "va" }, { name: "Venezuela", code: "ve" }, { name: "Vietnam", code: "vn" }, { name: "Yemen", code: "ye" }, { name: "Zambia", code: "zm" }, { name: "Zimbabwe", code: "zw" }
+    ],
+    aliases: {
+      "uk": "united kingdom", "usa": "united states of america", "us": "united states of america",
+      "uae": "united arab emirates", "drc": "democratic republic of the congo", "congo": "republic of the congo"
+    }
   },
   world_196: {
     id: "world_196",
@@ -982,28 +1174,28 @@ for (const [qid, label] of Object.entries(QUIZ_CONTINENT_NAME)) {
 
 const homeScreen = document.getElementById("home-screen");
 const quizScreen = document.getElementById("quiz-screen");
-const startEuropeQuizBtn = document.getElementById("start-europe-quiz-btn");
-const startUsQuizBtn = document.getElementById("start-us-quiz-btn");
-const startAfricaQuizBtn = document.getElementById("start-africa-quiz-btn");
-const startAsiaQuizBtn = document.getElementById("start-asia-quiz-btn");
-const startNorthAmericaQuizBtn = document.getElementById("start-northamerica-quiz-btn");
-const startSouthAmericaQuizBtn = document.getElementById("start-southamerica-quiz-btn");
-const startOceaniaQuizBtn = document.getElementById("start-oceania-quiz-btn");
-const startWorldQuizBtn = document.getElementById("start-world-quiz-btn");
-const backHomeBtn = document.getElementById("back-home-btn");
-const guessForm = document.getElementById("guess-form");
-const guessInput = document.getElementById("guess-input");
-const feedback = document.getElementById("feedback");
-const scoreEl = document.getElementById("score");
-const timerEl = document.getElementById("timer");
-const mapSvg = document.getElementById("map-svg");
-const quizTitleEl = document.getElementById("quiz-title");
-const zoomInBtn = document.getElementById("zoom-in-btn");
-const zoomOutBtn = document.getElementById("zoom-out-btn");
-const pbDisplayEl = document.getElementById("personal-best-display");
-const giveUpBtn = document.getElementById("give-up-btn");
-const quizOverlay = document.getElementById("quiz-overlay");
-const startGameBtn = document.getElementById("start-game-btn");
+startEuropeQuizBtn = document.getElementById("start-europe-quiz-btn");
+startUsQuizBtn = document.getElementById("start-us-quiz-btn");
+startAfricaQuizBtn = document.getElementById("start-africa-quiz-btn");
+startAsiaQuizBtn = document.getElementById("start-asia-quiz-btn");
+startNorthAmericaQuizBtn = document.getElementById("start-northamerica-quiz-btn");
+startSouthAmericaQuizBtn = document.getElementById("start-southamerica-quiz-btn");
+startOceaniaQuizBtn = document.getElementById("start-oceania-quiz-btn");
+startWorldQuizBtn = document.getElementById("start-world-quiz-btn");
+backHomeBtn = document.getElementById("back-home-btn");
+guessForm = document.getElementById("guess-form");
+guessInput = document.getElementById("guess-input");
+feedback = document.getElementById("feedback");
+scoreEl = document.getElementById("score");
+timerEl = document.getElementById("timer");
+mapSvg = document.getElementById("map-svg");
+quizTitleEl = document.getElementById("quiz-title");
+zoomInBtn = document.getElementById("zoom-in-btn");
+zoomOutBtn = document.getElementById("zoom-out-btn");
+pbDisplayEl = document.getElementById("personal-best-display");
+giveUpBtn = document.getElementById("give-up-btn");
+quizOverlay = document.getElementById("quiz-overlay");
+startGameBtn = document.getElementById("start-game-btn");
 
 let pageZoom = 1;
 
@@ -1018,6 +1210,7 @@ const state = {
   mode: "home",
   activeQuizId: null,
   activeQuiz: null,
+  activeFlagIndex: 0, // NEW: for cycling through flag quizzes
   countries: [],
   guessed: new Set(),
   lookup: new Map(),
@@ -1884,6 +2077,62 @@ function buildMap(features, backgroundFeatures = []) {
   renderCountryList();
 }
 
+function buildFlagQuiz(quiz) {
+  state.countries = [];
+  state.lookup.clear();
+  state.aliases.clear();
+  state.guessed.clear();
+  state.activeFlagIndex = 0;
+
+  // Build the list based on flags
+  quiz.guessableCountries.forEach((item, idx) => {
+    const canonical = normalizeName(item.name);
+    const country = {
+      rawName: item.name,
+      canonical,
+      code: item.code,
+      index: idx
+    };
+    state.countries.push(country);
+    state.lookup.set(canonical, country);
+  });
+
+  // Load aliases
+  if (quiz.aliases) {
+    for (const [alias, canonical] of Object.entries(quiz.aliases)) {
+      state.aliases.set(normalizeName(alias), normalizeName(canonical));
+    }
+  }
+
+  scoreEl.textContent = `0 / ${state.countries.length}`;
+  renderFlagGrid();
+}
+
+function renderFlagGrid() {
+  const grid = document.getElementById("flag-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  state.countries.forEach((c, idx) => {
+    const box = document.createElement("div");
+    box.className = "flag-box";
+    if (idx === state.activeFlagIndex) box.classList.add("active");
+    if (state.guessed.has(c.canonical)) box.classList.add("guessed");
+
+    box.innerHTML = `
+      <div class="flag-img-container">
+        <img src="https://flagcdn.com/w320/${c.code}.png" alt="Quiz Flag" loading="lazy">
+      </div>
+      <div class="flag-label">${state.guessed.has(c.canonical) ? c.rawName : ""}</div>
+    `;
+    grid.appendChild(box);
+  });
+
+  // ensure the active flag is visible
+  const activeBox = grid.children[state.activeFlagIndex];
+  if (activeBox) activeBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function applyGuess(input) {
   const direct = normalizeName(input);
   const targetName = state.aliases.get(direct) || direct;
@@ -1905,16 +2154,43 @@ function applyGuess(input) {
     return;
   }
 
-  state.guessed.add(targetName);
-  for (const path of country.paths) {
-    path.classList.add("guessed");
+  // FLAG MODE LOGIC: Strict - only the active flag can be guessed
+  if (state.activeQuiz.type === "flags") {
+    const activeCountry = state.countries[state.activeFlagIndex];
+
+    if (targetName !== activeCountry.canonical) {
+      setMessage(`Incorrect! That is not the country for this flag.`, false);
+      return;
+    }
+
+    state.guessed.add(targetName);
+
+    // Find next un-guessed flag
+    let nextIdx = state.activeFlagIndex;
+    while (nextIdx < state.countries.length && state.guessed.has(state.countries[nextIdx].canonical)) {
+      nextIdx++;
+    }
+    if (nextIdx >= state.countries.length) {
+      // wrap around or find first un-guessed
+      nextIdx = state.countries.findIndex(c => !state.guessed.has(c.canonical));
+    }
+    state.activeFlagIndex = nextIdx === -1 ? state.activeFlagIndex : nextIdx;
+
+    renderFlagGrid();
+  } else {
+    // MAP MODE LOGIC
+    state.guessed.add(targetName);
+    for (const path of country.paths) {
+      path.classList.add("guessed");
+    }
+    for (const halo of mapSvg.querySelectorAll(`[data-halo-for^="${targetName}:"]`)) {
+      halo.classList.add("guessed");
+    }
+    renderCountryList();
   }
-  for (const halo of mapSvg.querySelectorAll(`[data-halo-for^="${targetName}:"]`)) {
-    halo.classList.add("guessed");
-  }
+
   setMessage(`Correct: ${country.rawName}`, true);
   scoreEl.textContent = `${state.guessed.size} / ${state.countries.length}`;
-  renderCountryList();
 
   if (state.guessed.size === state.countries.length) {
     endQuiz(true);
@@ -1931,7 +2207,7 @@ async function endQuiz(win = false) {
   updateTimer();
 
   // reveal missed
-  if (!win) {
+  if (!win && state.activeQuiz.type !== "flags") { // Only reveal on map for now
     const missed = state.countries.filter(c => !state.guessed.has(c.canonical));
     for (const c of missed) {
       for (const p of c.paths) {
@@ -2020,15 +2296,25 @@ function renderCountryList() {
 }
 
 function tryAutoSubmitGuess() {
-  if (state.mode !== "quiz") {
+  if (state.mode !== "quiz" || !state.activeQuiz) {
     return;
   }
   const raw = guessInput.value;
   const direct = normalizeName(raw);
   const targetName = state.aliases.get(direct) || direct;
+
   if (!targetName || !state.lookup.has(targetName) || state.guessed.has(targetName)) {
     return;
   }
+
+  // If in Flag mode, only auto-submit if it's the CORRECT answer for the active slot
+  if (state.activeQuiz.type === "flags") {
+    const activeCountry = state.countries[state.activeFlagIndex];
+    if (targetName !== activeCountry.canonical) {
+      return;
+    }
+  }
+
   applyGuess(raw);
   guessInput.value = "";
 }
@@ -2060,76 +2346,155 @@ async function loadGeoJsonByKeyOrUrl(windowKey, dataUrl) {
   return response.json();
 }
 
-async function startQuiz(quizId) {
-  const quiz = QUIZZES[quizId];
-  if (!quiz) {
-    return;
+function buildFlagQuiz(quiz) {
+  state.countries = [];
+  state.lookup.clear();
+  state.aliases.clear();
+  state.guessed.clear();
+  state.activeFlagIndex = 0;
+
+  // Fisher-Yates shuffle for flags
+  let flagList = [...quiz.guessableCountries];
+  for (let i = flagList.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [flagList[i], flagList[j]] = [flagList[j], flagList[i]];
   }
 
+  flagList.forEach((item, idx) => {
+    const canonical = normalizeName(item.name);
+    const country = {
+      rawName: item.name,
+      canonical,
+      code: item.code,
+      index: idx
+    };
+    state.countries.push(country);
+    state.lookup.set(canonical, country);
+  });
+
+  // Load aliases
+  if (quiz.aliases) {
+    for (const [alias, canonical] of Object.entries(quiz.aliases)) {
+      state.aliases.set(normalizeName(alias), normalizeName(canonical));
+    }
+  }
+
+  scoreEl.textContent = `0 / ${state.countries.length}`;
+  renderFlagGrid();
+}
+
+function renderFlagGrid() {
+  const grid = document.getElementById("flag-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  state.countries.forEach((c, idx) => {
+    const box = document.createElement("div");
+    box.className = "flag-box";
+    if (idx === state.activeFlagIndex) box.classList.add("active");
+    if (state.guessed.has(c.canonical)) box.classList.add("guessed");
+
+    box.innerHTML = `
+      <div class="flag-img-container">
+        <img src="https://flagcdn.com/w320/${c.code}.png" alt="Quiz Flag" loading="lazy">
+      </div>
+      <div class="flag-label">${state.guessed.has(c.canonical) ? c.rawName : ""}</div>
+    `;
+    grid.appendChild(box);
+  });
+
+  // ensure the active flag is visible
+  const activeBox = grid.children[state.activeFlagIndex];
+  if (activeBox) activeBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function startQuiz(quizId) {
+  const q = QUIZZES[quizId];
+  if (!q) return;
+
   state.activeQuizId = quizId;
-  state.activeQuiz = quiz;
-  quizTitleEl.textContent = quiz.title;
+  state.activeQuiz = q;
+  state.activeFlagIndex = 0; // reset for new game
+
+  // Toggle Visibility
+  const mapWrap = document.getElementById("map-wrap");
+  const flagGrid = document.getElementById("flag-grid");
+  if (q.type === "flags") {
+    if (mapWrap) mapWrap.style.display = "none";
+    if (flagGrid) flagGrid.style.display = "grid";
+  } else {
+    if (mapWrap) mapWrap.style.display = "block";
+    if (flagGrid) flagGrid.style.display = "none";
+  }
+
+  quizTitleEl.textContent = q.title;
   switchScreen("quiz");
-  setMessage("Loading map data...", true);
+  setMessage("Loading data...", true);
 
   try {
-    const geojson = await loadGeoJsonForActiveQuiz();
-    let backgroundGeojson = null;
-    if (quiz.background) {
-      backgroundGeojson = await loadGeoJsonByKeyOrUrl(quiz.background.dataWindowKey, quiz.background.dataUrl);
-    }
-    // Merge global world aliases so regional quizzes accept common alternate names
-    try {
-      const worldAliases = (QUIZZES.world_196 && QUIZZES.world_196.aliases) || {};
-      quiz.aliases = Object.assign({}, worldAliases, quiz.aliases || {});
-    } catch (e) {
-      // ignore
-    }
-    buildMap(geojson.features || [], (backgroundGeojson && backgroundGeojson.features) || []);
-    if (!state.countries.length) {
-      throw new Error("No locations were parsed from map data");
+    if (q.type === "flags") {
+      buildFlagQuiz(q);
+    } else {
+      const geojson = await loadGeoJsonByKeyOrUrl(q.dataWindowKey, q.dataUrl);
+      let backgroundGeojson = null;
+      if (q.background) {
+        backgroundGeojson = await loadGeoJsonByKeyOrUrl(q.background.dataWindowKey, q.background.dataUrl);
+      }
+
+      // Merge global world aliases
+      try {
+        const worldAliases = (QUIZZES.world_196 && QUIZZES.world_196.aliases) || {};
+        q.aliases = Object.assign({}, worldAliases, q.aliases || {});
+      } catch (e) {
+        console.warn("Could not merge world aliases.");
+      }
+
+      buildMap(geojson.features || [], (backgroundGeojson && backgroundGeojson.features) || []);
     }
 
     state.elapsedMs = 0;
     timerEl.textContent = "00:00";
     clearInterval(state.timerHandle);
-    // Timer will be started in beginQuiz() instead of here
 
-    setMessage("Map ready. Click Start Quiz to begin.", true);
+    setMessage(q.type === "flags" ? "Flags ready. Click Start to begin!" : "Map ready. Click Start to begin!", true);
 
-    // load PB display
     const records = currentUser?.user_metadata?.quiz_records || {};
     state.personalBest = records[quizId] || { score: 0, timeMs: 0 };
     updatePBDisplay();
     updateLeaderboard();
 
-    // Show start button
     quizOverlay.style.display = "flex";
-    startGameBtn.textContent = "Start Quiz";
+    startGameBtn.textContent = "Play Again";
     guessForm.style.display = "none";
     giveUpBtn.style.display = "none";
-
-    // reset timer display
     timerEl.textContent = "00:00";
     state.elapsedMs = 0;
-
     guessInput.value = "";
   } catch (err) {
-    setMessage(`Failed to load map: ${err.message}`);
+    console.error("Quiz Start Error:", err);
+    showCustomDialog(`Failed to load quiz: ${err.message}`, "Error");
+    setMessage(`Error: ${err.message}`);
   }
 }
 
 function beginQuiz() {
   // Clear any previous color reveal
-  for (const c of state.countries) {
-    for (const p of c.paths) {
-      p.style.fill = "";
-      p.classList.remove("guessed");
+  if (state.activeQuiz.type !== "flags") {
+    for (const c of state.countries) {
+      if (c.paths) {
+        for (const p of c.paths) {
+          p.style.fill = "";
+          p.classList.remove("guessed");
+        }
+      }
     }
+    for (const halo of mapSvg.querySelectorAll('.island-halo')) {
+      halo.classList.remove("guessed");
+    }
+  } else {
+    renderFlagGrid();
   }
-  for (const halo of mapSvg.querySelectorAll('.island-halo')) {
-    halo.classList.remove("guessed");
-  }
+
   state.guessed.clear();
   renderCountryList();
   scoreEl.textContent = `0 / ${state.countries.length}`;
@@ -2154,19 +2519,7 @@ function stopQuiz() {
   setMessage("");
 }
 
-startEuropeQuizBtn.addEventListener("click", () => startQuiz("europe"));
-startUsQuizBtn.addEventListener("click", () => startQuiz("us_states"));
-startAfricaQuizBtn.addEventListener("click", () => startQuiz("africa"));
-startAsiaQuizBtn.addEventListener("click", () => startQuiz("asia"));
-startNorthAmericaQuizBtn.addEventListener("click", () => startQuiz("north_america"));
-startSouthAmericaQuizBtn.addEventListener("click", () => startQuiz("south_america"));
-startOceaniaQuizBtn.addEventListener("click", () => startQuiz("oceania"));
-startWorldQuizBtn.addEventListener("click", () => startQuiz("world_196"));
-backHomeBtn.addEventListener("click", stopQuiz);
-if (giveUpBtn) giveUpBtn.addEventListener("click", handleGiveUp);
-if (startGameBtn) startGameBtn.addEventListener("click", beginQuiz);
-
-
+// Zoom controls
 if (zoomInBtn && zoomOutBtn) {
   zoomInBtn.addEventListener("click", () => { pageZoom *= 1.25; updatePageZoom(); });
   zoomOutBtn.addEventListener("click", () => { pageZoom /= 1.25; updatePageZoom(); });
