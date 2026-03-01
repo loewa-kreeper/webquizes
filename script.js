@@ -39,7 +39,9 @@ function renderLevelBadge(level) {
 let loginForm, loginStatus, logoutBtn;
 let signupForm, showSignupLink, showLoginLink;
 let settingsBtn, closeSettingsBtn, settingsModal, settingsForm;
-let loggedInMenu;
+let loggedInMenu, resetLevelBtn;
+let levelUpModal, levelUpCloseBtn, levelUpLevelText, levelUpUnlockSection, levelUpTitleContainer;
+let customDialogModal, dialogTitle, dialogMessage, dialogOkBtn, dialogCancelBtn, dialogResolve;
 let currentUser = null;
 
 async function initializeAuth() {
@@ -80,6 +82,43 @@ async function initializeAuth() {
   if (settingsForm) {
     settingsForm.addEventListener('submit', handleSettingsSubmit);
   }
+  resetLevelBtn = document.getElementById('reset-level-btn');
+  if (resetLevelBtn) {
+    resetLevelBtn.addEventListener('click', handleResetLevel);
+  }
+
+  // Level up modal references
+  levelUpModal = document.getElementById('level-up-modal');
+  levelUpCloseBtn = document.getElementById('close-levelup-btn');
+  levelUpLevelText = document.getElementById('levelup-new-level');
+  levelUpUnlockSection = document.getElementById('levelup-unlock-section');
+  levelUpTitleContainer = document.getElementById('levelup-title-container');
+
+  if (levelUpCloseBtn) {
+    levelUpCloseBtn.addEventListener('click', () => {
+      if (levelUpModal) levelUpModal.style.display = 'none';
+    });
+  }
+
+  // Custom Dialog references
+  customDialogModal = document.getElementById('custom-dialog-modal');
+  dialogTitle = document.getElementById('dialog-title');
+  dialogMessage = document.getElementById('dialog-message');
+  dialogOkBtn = document.getElementById('dialog-ok-btn');
+  dialogCancelBtn = document.getElementById('dialog-cancel-btn');
+
+  if (dialogOkBtn) {
+    dialogOkBtn.onclick = () => {
+      if (customDialogModal) customDialogModal.style.display = 'none';
+      if (dialogResolve) dialogResolve(true);
+    };
+  }
+  if (dialogCancelBtn) {
+    dialogCancelBtn.onclick = () => {
+      if (customDialogModal) customDialogModal.style.display = 'none';
+      if (dialogResolve) dialogResolve(false);
+    };
+  }
 
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session && session.user) {
@@ -114,7 +153,7 @@ async function handleLogin(e) {
   const password = loginForm.password.value;
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
-    alert('Login failed: ' + error.message);
+    showCustomDialog('Login failed: ' + error.message, "Login Error");
   } else {
     setLoggedIn(data.user);
   }
@@ -132,7 +171,7 @@ async function handleSignUp(e) {
   const password = signupForm.password.value;
   const confirm = signupForm.confirm.value;
   if (password !== confirm) {
-    alert('Passwords do not match');
+    showCustomDialog('Passwords do not match', "Sign Up Error");
     return;
   }
 
@@ -152,9 +191,9 @@ async function handleSignUp(e) {
     }
   });
   if (error) {
-    alert('Sign up failed: ' + error.message);
+    showCustomDialog('Sign up failed: ' + error.message, "Sign Up Error");
   } else {
-    alert('Success! Check your email for a confirmation link (if enabled in Supabase).');
+    showCustomDialog('Success! Check your email for a confirmation link (if enabled in project).', "Success");
     showLoginForm();
     signupForm.reset();
   }
@@ -342,12 +381,48 @@ async function handleSettingsSubmit(e) {
       .eq('user_id', currentUser.id);
 
     setLoggedIn(user);
-    alert('Settings saved! Your leaderboard name and title have been updated.');
+    showCustomDialog('Settings saved! Your leaderboard presence has been updated.', 'Success');
     closeSettings();
     updateRankDisplay();
     updateLeaderboard();
   } catch (error) {
-    alert('Update Failed: ' + error.message);
+    showCustomDialog('Update Failed: ' + error.message, 'Error');
+  }
+}
+
+async function handleResetLevel() {
+  if (!currentUser) return;
+
+  const confirm1 = await showCustomDialog("Are you sure you want to reset your Level and XP? This cannot be undone.", "Careful!", true);
+  if (!confirm1) return;
+
+  const confirm2 = await showCustomDialog("LAST CHANCE: All progress will be lost. Your best scores stay. Continue?", "Final Warning", true);
+  if (!confirm2) return;
+
+  try {
+    const { data: { user }, error } = await supabaseClient.auth.updateUser({
+      data: { total_xp: 0, selected_title: "none" }
+    });
+    if (error) throw error;
+
+    // SYNC RESET TO LEADERBOARD: Keep scores, but reset personal status to Lv 1
+    const currentName = user.user_metadata.display_name || user.user_metadata.username || user.email;
+    await supabaseClient
+      .from('quiz_results')
+      .update({
+        user_level: 1,
+        user_title: "none",
+        user_name: currentName
+      })
+      .eq('user_id', currentUser.id);
+
+    setLoggedIn(user);
+    updateRankDisplay();
+    updateLeaderboard();
+    showCustomDialog("Character data reset successfully! You are now Level 1.", "Reset Complete");
+    closeSettings();
+  } catch (err) {
+    showCustomDialog("Reset failed: " + err.message, "Error");
   }
 }
 
@@ -1057,15 +1132,43 @@ async function savePB() {
       const oldTotalXp = meta.total_xp || 0;
       const newTotalXp = oldTotalXp + xpGained;
 
+      const oldLevelInfo = getLevelInfo(oldTotalXp);
+      const newLevelInfo = getLevelInfo(newTotalXp);
+
       console.log(`XP Awarded: ${xpGained}. New Total: ${newTotalXp}`);
 
       const { data: updatedData, error: xpError } = await supabaseClient.auth.updateUser({
         data: { total_xp: newTotalXp }
       });
+
       if (xpError) console.error("Error updating XP:", xpError.message);
       else if (updatedData.user) {
         currentUser = updatedData.user;
         updateRankDisplay();
+
+        // LEVEL UP CELEBRATION: Show for EVERY level increase
+        if (newLevelInfo.level > oldLevelInfo.level) {
+          console.log(`CELEBRATION: Level ${oldLevelInfo.level} -> ${newLevelInfo.level}`);
+
+          // Identify any newly unlocked titles in the jump
+          const newTitles = TITLES.filter(t =>
+            t.level > oldLevelInfo.level &&
+            t.level <= newLevelInfo.level &&
+            t.id !== "none"
+          );
+
+          if (newTitles.length > 0) {
+            console.log("TITLES UNLOCKED:", newTitles.map(t => t.name));
+          }
+
+          showLevelUpModal(newLevelInfo.level, newTitles);
+
+          // Force update past leaderboard records with the NEW live level
+          await supabaseClient
+            .from('quiz_results')
+            .update({ user_level: newLevelInfo.level })
+            .eq('user_id', currentUser.id);
+        }
       }
     }
   } catch (e) {
@@ -2143,6 +2246,46 @@ window.render_game_to_text = function renderGameToText() {
     sample_missing_countries: missing
   });
 };
+
+function showCustomDialog(message, title = "Notice", isConfirm = false) {
+  return new Promise((resolve) => {
+    if (!customDialogModal) {
+      // fallback to native if modal not ready
+      if (isConfirm) resolve(confirm(message));
+      else { alert(message); resolve(true); }
+      return;
+    }
+
+    dialogTitle.textContent = title;
+    dialogMessage.textContent = message;
+    dialogCancelBtn.style.display = isConfirm ? 'inline-block' : 'none';
+    dialogOkBtn.textContent = isConfirm ? 'Yes' : 'OK';
+    customDialogModal.style.display = 'flex';
+    dialogResolve = resolve;
+  });
+}
+
+function showLevelUpModal(newLevel, unlockedTitles = []) {
+  if (!levelUpModal) return;
+
+  if (levelUpLevelText) levelUpLevelText.textContent = newLevel;
+
+  if (levelUpUnlockSection && levelUpTitleContainer) {
+    if (unlockedTitles && unlockedTitles.length > 0) {
+      console.log("Displaying Title Unlock Section");
+      levelUpUnlockSection.style.display = 'block';
+      levelUpTitleContainer.innerHTML = '';
+      unlockedTitles.forEach(t => {
+        levelUpTitleContainer.innerHTML += renderTitleBadge(t.id);
+      });
+    } else {
+      console.log("Hiding Title Unlock Section (No titles in this level-up)");
+      levelUpUnlockSection.style.display = 'none';
+    }
+  }
+
+  levelUpModal.style.display = 'flex';
+}
 
 window.advanceTime = function advanceTime(ms) {
   if (state.mode !== "quiz") {
