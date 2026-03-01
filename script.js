@@ -44,6 +44,49 @@ let startEuropeQuizBtn, startEuropeFlagsBtn, startUsQuizBtn, startAfricaQuizBtn,
 let levelUpModal, levelUpCloseBtn, levelUpLevelText, levelUpUnlockSection, levelUpTitleContainer;
 let customDialogModal, dialogTitle, dialogMessage, dialogOkBtn, dialogCancelBtn, dialogResolve;
 let currentUser = null;
+let currentProfile = null;
+
+async function refreshUserProfile() {
+  if (!currentUser) return null;
+
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('id', currentUser.id)
+    .single();
+
+  if (error || !profile) {
+    console.log("Profile not found. Creating from auth metadata...");
+    const meta = currentUser.user_metadata || {};
+    const rawName = meta.display_name || meta.username || meta.full_name || meta.name;
+    const initialName = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : currentUser.email;
+
+    const newProfile = {
+      id: currentUser.id,
+      display_name: initialName,
+      selected_title: meta.selected_title || 'none',
+      total_xp: meta.total_xp || 0,
+      quiz_records: meta.quiz_records || {}
+    };
+
+    const { data: inserted, error: insError } = await supabaseClient
+      .from('profiles')
+      .upsert(newProfile, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (insError) {
+      console.error("Failed to create profile:", insError.message, insError.details, insError.hint);
+    } else {
+      currentProfile = inserted;
+    }
+  } else {
+    currentProfile = profile;
+  }
+
+  updateRankDisplay();
+  return currentProfile;
+}
 
 async function initializeAuth() {
   // grab elements once DOM is ready
@@ -269,7 +312,7 @@ function getLevelInfo(totalXp) {
 }
 
 function updateRankDisplay() {
-  const totalXp = currentUser?.user_metadata?.total_xp || 0;
+  const totalXp = currentProfile?.total_xp || 0;
   const info = getLevelInfo(totalXp);
   const pct = (info.xpInLevel / info.xpRequired) * 100;
 
@@ -290,18 +333,17 @@ function updateRankDisplay() {
   if (qBarFill) qBarFill.style.width = `${pct}%`;
 }
 
-function setLoggedIn(user) {
+async function setLoggedIn(user) {
   currentUser = user;
-  const meta = user.user_metadata || {};
+  await refreshUserProfile();
 
-  // AGGRESSIVE NAME RESOLUTION: Ensure email never appears if a name exists
-  const rawName = meta.display_name || meta.username || meta.full_name || meta.name;
-  const displayName = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : user.email;
+  const profile = currentProfile || {};
+  const displayName = profile.display_name || user.email;
 
   console.log("LOGIN DETECTED:", { email: user.email, resolvedName: displayName });
 
   if (loginStatus) {
-    const titleHtml = renderTitleBadge(meta.selected_title || "none", getLevelInfo(meta.total_xp || 0).level);
+    const titleHtml = renderTitleBadge(profile.selected_title || "none", getLevelInfo(profile.total_xp || 0).level);
     loginStatus.innerHTML = `Welcome, <span style="color: #f59e0b; font-weight: 800;">${displayName}</span>! ${titleHtml}`;
   }
   if (loginForm) loginForm.style.display = 'none';
@@ -313,36 +355,35 @@ function setLoggedIn(user) {
 
   const usernameInput = document.getElementById('settings-username');
   if (usernameInput) {
-    usernameInput.value = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : "";
+    usernameInput.value = profile.display_name || "";
   }
 }
 
 function setLoggedOut() {
   currentUser = null;
+  currentProfile = null;
   if (loginStatus) loginStatus.textContent = '';
   if (loginForm) loginForm.style.display = 'flex';
   if (signupForm) signupForm.style.display = 'none';
   if (showSignupLink) showSignupLink.style.display = 'block';
   if (loggedInMenu) loggedInMenu.style.display = 'none';
   if (settingsModal) settingsModal.style.display = 'none';
+  updateRankDisplay();
 }
 
 function openSettings() {
   if (settingsModal) settingsModal.style.display = 'flex';
 
-  // Popuplate Title choices
   const titleSelect = document.getElementById('settings-title');
-  if (titleSelect && currentUser) {
-    const currentXp = currentUser.user_metadata?.total_xp || 0;
-    const info = getLevelInfo(currentXp);
-    const savedTitle = currentUser.user_metadata?.selected_title || "none";
+  if (titleSelect && currentProfile) {
+    const info = getLevelInfo(currentProfile.total_xp || 0);
+    const savedTitle = currentProfile.selected_title || "none";
 
     titleSelect.innerHTML = "";
     TITLES.forEach(t => {
       const isLocked = info.level < t.level;
       const option = document.createElement('option');
       option.value = t.id;
-      // For testing, make them all available as requested, but show level req
       option.textContent = t.name + (t.level > 0 ? ` (Lv ${t.level})` : "") + (isLocked ? " 🔒" : "");
       option.selected = (t.id === savedTitle);
       titleSelect.appendChild(option);
@@ -357,79 +398,64 @@ function closeSettings() {
 
 async function handleSettingsSubmit(e) {
   e.preventDefault();
+  if (!currentUser || !currentProfile) return;
+
   const newUsername = document.getElementById('settings-username').value.trim();
   const newPassword = document.getElementById('settings-new-password').value;
   const confirmPassword = document.getElementById('settings-confirm-password').value;
   const currentPassword = document.getElementById('settings-current-password').value;
+  const titleSelect = document.getElementById('settings-title');
+  const newTitle = titleSelect ? titleSelect.value : currentProfile.selected_title;
 
-  // STRICT CHECK: Password is ONLY required if setting a NEW password
   const isChangingPassword = newPassword && newPassword.trim() !== '';
 
   if (isChangingPassword && !currentPassword) {
-    alert('Security Check: You must enter your Current Password to change your password settings.');
+    showCustomDialog('You must enter your Current Password to change it.', 'Security Check');
     return;
   }
-
   if (isChangingPassword && newPassword !== confirmPassword) {
-    alert('The new passwords you entered do not match.');
+    showCustomDialog('The new passwords do not match.', 'Error');
     return;
   }
 
   try {
-    // Only verify password if user is actually trying to change it
     if (isChangingPassword) {
-      console.log("Verifying current password for password update...");
       const { error: reAuthError } = await supabaseClient.auth.signInWithPassword({
         email: currentUser.email,
         password: currentPassword
       });
-      if (reAuthError) throw new Error('Incorrect current password. Please try again.');
+      if (reAuthError) throw new Error('Incorrect current password.');
     }
 
-    // Prepare update object - always include current metadata to avoid wipes
-    const updates = { data: { ...(currentUser.user_metadata || {}) } };
+    // 1. Update profiles table
+    const profileUpdates = {
+      selected_title: newTitle
+    };
+    if (newUsername !== '') profileUpdates.display_name = newUsername;
 
-    if (newUsername !== undefined && newUsername !== '') {
-      updates.data.display_name = newUsername;
-      updates.data.full_name = newUsername;
-      updates.data.username = newUsername;
-    }
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .update(profileUpdates)
+      .eq('id', currentUser.id);
+    if (profileError) throw profileError;
 
-    const titleSelect = document.getElementById('settings-title');
-    if (titleSelect) {
-      updates.data.selected_title = titleSelect.value;
-      console.log("Selected title for update:", titleSelect.value);
-    }
-
+    // 2. Optionally update password in auth
     if (isChangingPassword) {
-      updates.password = newPassword;
+      const { error: pwError } = await supabaseClient.auth.updateUser({ password: newPassword });
+      if (pwError) throw pwError;
     }
 
-    const { data: { user }, error: updateError } = await supabaseClient.auth.updateUser(updates);
-    if (updateError) throw updateError;
-
-    // LIVE UPDATE SYNC: Update all past records with the new name, title, AND level
-    const finalTitle = updates.data.selected_title || "none";
-    const finalName = (updates.data.display_name || updates.data.username || currentUser.email);
-    const finalLevel = getLevelInfo(updates.data.total_xp || 0).level;
-
-    console.log("SYCNING LIVE PROFILES:", { finalName, finalTitle, finalLevel });
-
-    // This ensures past records on the leaderboard change to the CURRENT state
-    await supabaseClient
-      .from('quiz_results')
-      .update({
-        user_name: finalName,
-        user_title: finalTitle,
-        user_level: finalLevel
-      })
-      .eq('user_id', currentUser.id);
-
-    setLoggedIn(user);
-    showCustomDialog('Settings saved! Your leaderboard presence has been updated.', 'Success');
-    closeSettings();
+    // 3. Refresh local profile and update UI
+    await refreshUserProfile();
+    const displayName = currentProfile.display_name || currentUser.email;
+    if (loginStatus) {
+      const titleHtml = renderTitleBadge(currentProfile.selected_title, getLevelInfo(currentProfile.total_xp || 0).level);
+      loginStatus.innerHTML = `Welcome, <span style="color: #f59e0b; font-weight: 800;">${displayName}</span>! ${titleHtml}`;
+    }
     updateRankDisplay();
     updateLeaderboard();
+    showCustomDialog('Settings saved!', 'Success');
+    closeSettings();
   } catch (error) {
     showCustomDialog('Update Failed: ' + error.message, 'Error');
   }
@@ -441,30 +467,21 @@ async function handleResetLevel() {
   const confirm1 = await showCustomDialog("Are you sure you want to reset your Level and XP? This cannot be undone.", "Careful!", true);
   if (!confirm1) return;
 
-  const confirm2 = await showCustomDialog("LAST CHANCE: All progress will be lost. Your best scores stay. Continue?", "Final Warning", true);
+  const confirm2 = await showCustomDialog("LAST CHANCE: All XP progress will be lost. Your best scores stay. Continue?", "Final Warning", true);
   if (!confirm2) return;
 
   try {
-    const { data: { user }, error } = await supabaseClient.auth.updateUser({
-      data: { total_xp: 0, selected_title: "none" }
-    });
+    // Reset XP and title in the profiles table
+    const { error } = await supabaseClient
+      .from('profiles')
+      .update({ total_xp: 0, selected_title: 'none' })
+      .eq('id', currentUser.id);
     if (error) throw error;
 
-    // SYNC RESET TO LEADERBOARD: Keep scores, but reset personal status to Lv 1
-    const currentName = user.user_metadata.display_name || user.user_metadata.username || user.email;
-    await supabaseClient
-      .from('quiz_results')
-      .update({
-        user_level: 1,
-        user_title: "none",
-        user_name: currentName
-      })
-      .eq('user_id', currentUser.id);
-
-    setLoggedIn(user);
+    await refreshUserProfile();
     updateRankDisplay();
     updateLeaderboard();
-    showCustomDialog("Character data reset successfully! You are now Level 1.", "Reset Complete");
+    showCustomDialog("Reset complete! You are now Level 1.", "Reset Complete");
     closeSettings();
   } catch (err) {
     showCustomDialog("Reset failed: " + err.message, "Error");
@@ -1264,128 +1281,69 @@ async function savePB() {
     }
   }
 
-  // Always save to the new quiz_results TABLE for the leaderboard
+  // Save quiz result and update profile
   try {
-    const meta = currentUser.user_metadata || {};
-    // ALWAYS use current profile data
-    const rawName = meta.display_name || meta.username || meta.full_name || meta.name;
-    const dName = (rawName && String(rawName).trim() !== "") ? String(rawName).trim() : currentUser.email;
-
-    const dLevelInfo = getLevelInfo(meta.total_xp || 0);
-    const dLevel = dLevelInfo.level;
-
-    let dTitle = meta.selected_title || "none";
-    if (dTitle === "none") {
-      const best = [...TITLES].reverse().find(t => dLevel >= t.level);
-      dTitle = best ? best.id : "none";
+    // Ensure profile exists before inserting (FK constraint requirement)
+    if (!currentProfile) await refreshUserProfile();
+    if (!currentProfile) {
+      console.error("Cannot save: no profile row for user.");
+      return;
     }
 
-    console.log("Saving new record with CURRENT status:", { dName, dTitle, dLevel });
+    const oldTotalXp = currentProfile.total_xp || 0;
+    const oldLevelInfo = getLevelInfo(oldTotalXp);
+    let xpGained = total > 0 ? Math.floor((currentScore / total) * 100) : 0;
+    const newTotalXp = oldTotalXp + xpGained;
+    const newLevelInfo = getLevelInfo(newTotalXp);
 
+    // 1. Insert the raw quiz result
     const { error: insertError } = await supabaseClient
       .from('quiz_results')
-      .insert([
-        {
-          user_id: currentUser.id,
-          user_name: dName,
-          user_title: dTitle,
-          user_level: dLevel,
-          quiz_id: state.activeQuizId,
-          score: currentScore,
-          total_score: total,
-          time_ms: currentTime
-        }
-      ]);
-
-    // If that fails (maybe column missing), try without level/title
+      .insert([{
+        user_id: currentUser.id,
+        quiz_id: state.activeQuizId,
+        score: currentScore,
+        total_score: total,
+        time_ms: currentTime
+      }]);
     if (insertError) {
-      console.warn("Retrying save without newer columns...");
-      await supabaseClient
-        .from('quiz_results')
-        .insert([
-          {
-            user_id: currentUser.id,
-            user_name: dName,
-            quiz_id: state.activeQuizId,
-            score: currentScore,
-            total_score: total,
-            time_ms: currentTime
-          }
-        ]);
+      console.error("Error inserting quiz result:", insertError.message, insertError.details, insertError.hint);
     }
-    if (insertError) {
-      console.error("LEADERBOARD SAVE ERROR:", insertError.message, insertError.details);
+
+    // 2. Update profiles table with new XP and PB records
+    const oldRecords = currentProfile.quiz_records || {};
+    const newRecords = { ...oldRecords };
+    if (isBetter) {
+      newRecords[state.activeQuizId] = { score: currentScore, timeMs: (currentScore === total ? currentTime : 0) };
+    }
+
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .update({ total_xp: newTotalXp, quiz_records: newRecords })
+      .eq('id', currentUser.id);
+
+    if (profileError) {
+      console.error("Error updating profile:", profileError.message, profileError.details, profileError.hint);
     } else {
-      console.log("LEADERBOARD SAVE SUCCESS");
-    }
+      currentProfile = { ...currentProfile, total_xp: newTotalXp, quiz_records: newRecords };
+      if (isBetter) {
+        state.personalBest = newRecords[state.activeQuizId];
+        updatePBDisplay();
+      }
+      updateRankDisplay();
 
-    // XP AWARDING LOGIC
-    if (total > 0) {
-      const xpGained = Math.floor((currentScore / total) * 100);
-      const oldTotalXp = meta.total_xp || 0;
-      const newTotalXp = oldTotalXp + xpGained;
-
-      const oldLevelInfo = getLevelInfo(oldTotalXp);
-      const newLevelInfo = getLevelInfo(newTotalXp);
-
-      console.log(`XP Awarded: ${xpGained}. New Total: ${newTotalXp}`);
-
-      const { data: updatedData, error: xpError } = await supabaseClient.auth.updateUser({
-        data: { total_xp: newTotalXp }
-      });
-
-      if (xpError) console.error("Error updating XP:", xpError.message);
-      else if (updatedData.user) {
-        currentUser = updatedData.user;
-        updateRankDisplay();
-
-        // LEVEL UP CELEBRATION: Show for EVERY level increase
-        if (newLevelInfo.level > oldLevelInfo.level) {
-          console.log(`CELEBRATION: Level ${oldLevelInfo.level} -> ${newLevelInfo.level}`);
-
-          // Identify any newly unlocked titles in the jump
-          const newTitles = TITLES.filter(t =>
-            t.level > oldLevelInfo.level &&
-            t.level <= newLevelInfo.level &&
-            t.id !== "none"
-          );
-
-          if (newTitles.length > 0) {
-            console.log("TITLES UNLOCKED:", newTitles.map(t => t.name));
-          }
-
-          showLevelUpModal(newLevelInfo.level, newTitles);
-
-          // Force update past leaderboard records with the NEW live level
-          await supabaseClient
-            .from('quiz_results')
-            .update({ user_level: newLevelInfo.level })
-            .eq('user_id', currentUser.id);
-        }
+      // Level-up celebration
+      if (newLevelInfo.level > oldLevelInfo.level) {
+        const newTitles = TITLES.filter(t =>
+          t.level > oldLevelInfo.level &&
+          t.level <= newLevelInfo.level &&
+          t.id !== "none"
+        );
+        showLevelUpModal(newLevelInfo.level, newTitles);
       }
     }
   } catch (e) {
-    console.error("Supabase insert error:", e);
-  }
-
-  // Update personalBest metadata for local UI convenience
-  if (isBetter) {
-    const newPB = { score: currentScore, timeMs: (currentScore === total ? currentTime : 0) };
-    state.personalBest = newPB;
-    updatePBDisplay();
-
-    const oldRecords = currentUser.user_metadata?.quiz_records || {};
-    const newRecords = { ...oldRecords, [state.activeQuizId]: newPB };
-
-    try {
-      const { data, error } = await supabaseClient.auth.updateUser({
-        data: { quiz_records: newRecords }
-      });
-      if (error) console.error("Error saving metadata PB:", error.message);
-      else if (data.user) currentUser = data.user;
-    } catch (e) {
-      console.error("Supabase metadata update error:", e);
-    }
+    console.error("Critical error in savePB:", e);
   }
 }
 
@@ -1397,33 +1355,51 @@ async function updateLeaderboard() {
 
 async function fetchLeaderboard(quizId) {
   try {
-    // Show loading state
     const list = document.getElementById("leaderboard-list");
     if (list) list.innerHTML = `<li class="leader-empty">Loading scores...</li>`;
 
-    // Fetch up to 100 rows to find unique users and local rank
-    let { data, error } = await supabaseClient
+    // Step 1: Fetch quiz results for this quiz
+    const { data: results, error: resultsError } = await supabaseClient
       .from('quiz_results')
-      .select('user_id, user_name, user_title, user_level, score, total_score, time_ms')
+      .select('user_id, score, total_score, time_ms')
       .eq('quiz_id', quizId)
       .order('score', { ascending: false })
       .order('time_ms', { ascending: true })
       .limit(100);
 
-    if (error) {
-      console.warn("Extended fetch failed, trying fallback...");
-      const fallback = await supabaseClient
-        .from('quiz_results')
-        .select('*')
-        .eq('quiz_id', quizId)
-        .order('score', { ascending: false })
-        .order('time_ms', { ascending: true })
-        .limit(100);
-
-      if (fallback.error) throw fallback.error;
-      return fallback.data;
+    if (resultsError) {
+      console.error("Leaderboard fetch error:", resultsError.message);
+      return [];
     }
-    return data;
+    if (!results || results.length === 0) return [];
+
+    // Step 2: Collect unique user IDs and fetch their profiles
+    const userIds = [...new Set(results.map(r => r.user_id))];
+    const { data: profiles, error: profilesError } = await supabaseClient
+      .from('profiles')
+      .select('id, display_name, selected_title, total_xp')
+      .in('id', userIds);
+
+    if (profilesError) console.warn("Profiles fetch error:", profilesError.message);
+
+    // Step 3: Build a map of profiles by user_id for quick lookup
+    const profileMap = {};
+    (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+    // Step 4: Merge and return flat objects
+    return results.map(row => {
+      const profile = profileMap[row.user_id] || {};
+      return {
+        user_id: row.user_id,
+        score: row.score,
+        total_score: row.total_score,
+        time_ms: row.time_ms,
+        user_name: profile.display_name || 'Unknown',
+        user_title: profile.selected_title || 'none',
+        user_xp: profile.total_xp || 0,
+        user_level: getLevelInfo(profile.total_xp || 0).level
+      };
+    });
   } catch (e) {
     console.error("Leaderboard fetch error:", e);
     return [];
@@ -1484,15 +1460,22 @@ function renderLeaderboard(allData) {
 
     const titleHtml = renderTitleBadge(entry.user_title || "none", entry.user_level || 1);
 
+    const xpDisplay = entry.user_xp ? `<span style="font-size: 0.75rem; color: #9a3412; opacity: 0.8; font-weight: 500;">${entry.user_xp} XP</span>` : "";
+
     li.innerHTML = `
       <div class="leader-rank-info" style="display: flex; align-items: center; gap: 8px; flex: 1;">
         <span class="rank-pill">${idx + 1}</span>
         <div class="leader-name-row" style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
           ${renderLevelBadge(entry.user_level)}
-          <span class="leader-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            ${entry.user_name || "Guest"}
-          </span>
-          ${titleHtml}
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span class="leader-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${entry.user_name || "Guest"}
+              </span>
+              ${titleHtml}
+            </div>
+            ${xpDisplay}
+          </div>
         </div>
       </div>
       <span class="leader-val" style="font-weight: 800; color: #b45309; padding-left: 12px;">${displayVal}</span>
@@ -1516,13 +1499,20 @@ function renderLeaderboard(allData) {
       ? formatTime(userEntry.time_ms)
       : `${userEntry.score}/${userEntry.total_score}`;
 
+    const xpDisplay = userEntry.user_xp ? `<span style="font-size: 0.75rem; color: #9a3412; opacity: 0.8; font-weight: 500;">${userEntry.user_xp} XP</span>` : "";
+
     li.innerHTML = `
       <div class="leader-rank-info">
         <span class="rank-pill">${userRank}</span>
         <div class="leader-name-row" style="display: flex; align-items: center; gap: 6px;">
           ${renderLevelBadge(userEntry.user_level)}
-          <span class="leader-name" style="font-weight: 700;">(You) ${userEntry.user_name}</span>
-          ${renderTitleBadge(userEntry.user_title || "none")}
+          <div style="display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span class="leader-name" style="font-weight: 700;">(You) ${userEntry.user_name}</span>
+              ${renderTitleBadge(userEntry.user_title || "none")}
+            </div>
+            ${xpDisplay}
+          </div>
         </div>
       </div>
       <span class="leader-val">${displayVal}</span>
@@ -2458,7 +2448,7 @@ async function startQuiz(quizId) {
 
     setMessage(q.type === "flags" ? "Flags ready. Click Start to begin!" : "Map ready. Click Start to begin!", true);
 
-    const records = currentUser?.user_metadata?.quiz_records || {};
+    const records = currentProfile?.quiz_records || {};
     state.personalBest = records[quizId] || { score: 0, timeMs: 0 };
     updatePBDisplay();
     updateLeaderboard();
